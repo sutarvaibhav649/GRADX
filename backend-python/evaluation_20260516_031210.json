@@ -1,0 +1,88 @@
+{
+  "evaluation_result": {
+    "total_marks": 0,
+    "max_marks": 7,
+    "percentage": 0.0,
+    "section_scores": {
+      "Definition": {
+        "marks_awarded": 0,
+        "max_marks": 2,
+        "percentage": 0.0,
+        "scores": {
+          "semantic_similarity": 0.051,
+          "coherence": 1.0,
+          "concept_coverage": 0.0,
+          "depth_score": 0.363
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.0,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "complete schedule:- A schedule is said to be complete schedule if last operation of the each transaction is either commit or Abort otherwise partial schedule.\nview serializability\nLet S and S' be two schedules with the same set of instructions transactions. S and S' are view equivalent if the following three conditions are met, For each dato item Q",
+        "model_text": "Deep Learning is a type of Machine Learning that uses neural networks with many layers to learn patterns from data automatically. It does not require manual feature extraction because the network learns features on its own."
+      },
+      "Body": {
+        "marks_awarded": 0,
+        "max_marks": 3,
+        "percentage": 0.0,
+        "scores": {
+          "semantic_similarity": 0.091,
+          "coherence": 1.0,
+          "concept_coverage": 0.0,
+          "depth_score": 0.376
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.0,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "\u2460 If in schedule S, transaction Ti reads the initial value of Q, then in schedule S' also transaction Ti must read the initial value of Q.\n\u2461 If in a schedule S transaction Ti executes read (Q) and, that value, was Produced by transaction Tj (if any) then in schedule S' also transaction Ti must read the value of Q that was produced by the same write operation of transaction Tj.\n\u2462 The transaction (if any) that performs the Final write (Q) operation in schedule S must also perform the Final write (Q) operation in schedule S'.",
+        "model_text": "A deep learning model has an input layer, hidden layers, and an output layer. During training, data passes through each layer and the network updates its weights using backpropagation to reduce the error. Different types of deep learning networks are used for different tasks. CNN is used for images, RNN is used for text and sequences, and Transformers are used in NLP. Deep learning needs large amounts of data and GPUs to train well."
+      },
+      "Conclusion": {
+        "marks_awarded": 0,
+        "max_marks": 2,
+        "percentage": 0.0,
+        "scores": {
+          "semantic_similarity": 0.0,
+          "coherence": 0.0,
+          "concept_coverage": 0.0,
+          "depth_score": 0.0
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.0
+        },
+        "student_text": "",
+        "model_text": "Deep Learning is widely used in Artificial Intelligence today. It is used in image recognition, speech recognition, language translation, and self-driving cars. It has greatly improved the performance of Al systems compared to traditional machine learning methods."
+      }
+    },
+    "feedback": {
+      "strengths": [],
+      "improvements": [
+        "\ud83d\udcda Definition: Needs improvement",
+        "\ud83d\udd11 Definition: Missing key concepts",
+        "\ud83d\udcda Body: Needs improvement",
+        "\ud83d\udd11 Body: Missing key concepts",
+        "\ud83d\udcda Conclusion: Needs improvement",
+        "\ud83d\udd11 Conclusion: Missing key concepts"
+      ],
+      "warnings": []
+    },
+    "config_used": "Extracted Model Answer"
+  },
+  "student_answer": {
+    "Definition": "complete schedule:- A schedule is said to be complete schedule if last operation of the each transaction is either commit or Abort otherwise partial schedule.\nview serializability\nLet S and S' be two schedules with the same set of instructions transactions. S and S' are view equivalent if the following three conditions are met, For each dato item Q",
+    "Body": "\u2460 If in schedule S, transaction Ti reads the initial value of Q, then in schedule S' also transaction Ti must read the initial value of Q.\n\u2461 If in a schedule S transaction Ti executes read (Q) and, that value, was Produced by transaction Tj (if any) then in schedule S' also transaction Ti must read the value of Q that was produced by the same write operation of transaction Tj.\n\u2462 The transaction (if any) that performs the Final write (Q) operation in schedule S must also perform the Final write (Q) operation in schedule S'.",
+    "Conclusion": ""
+  },
+  "model_answer": {
+    "Definition": "Deep Learning is a type of Machine Learning that uses neural networks with many layers to learn patterns from data automatically. It does not require manual feature extraction because the network learns features on its own.",
+    "Body": "A deep learning model has an input layer, hidden layers, and an output layer. During training, data passes through each layer and the network updates its weights using backpropagation to reduce the error. Different types of deep learning networks are used for different tasks. CNN is used for images, RNN is used for text and sequences, and Transformers are used in NLP. Deep learning needs large amounts of data and GPUs to train well.",
+    "Conclusion": "Deep Learning is widely used in Artificial Intelligence today. It is used in image recognition, speech recognition, language translation, and self-driving cars. It has greatly improved the performance of Al systems compared to traditional machine learning methods."
+  },
+  "timestamp": "2026-05-16T03:12:10.519021"
+}

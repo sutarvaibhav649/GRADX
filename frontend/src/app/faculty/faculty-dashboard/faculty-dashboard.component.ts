@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, AfterViewInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { UpperCasePipe, CommonModule } from '@angular/common';
@@ -13,7 +13,7 @@ import { Subscription } from 'rxjs';
   templateUrl: './faculty-dashboard.component.html',
   styleUrl: './faculty-dashboard.component.css',
 })
-export class FacultyDashboardComponent implements OnInit, OnDestroy, AfterViewInit {
+export class FacultyDashboardComponent implements OnInit, OnDestroy {
   finalizeS!: Subscription;
 
   uploadForm!: FormGroup;
@@ -58,13 +58,6 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy, AfterViewIn
 
   ngOnInit() {
     this.loadDashboard();
-  }
-
-  ngAfterViewInit() {
-    // Bind the method to window so it can be called from HTML
-    (window as any).updateManualScoreFromComponent = () => {
-      this.updateManualScore();
-    };
   }
 
   loadDashboard() {
@@ -230,6 +223,13 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy, AfterViewIn
     this.facultyService.startEvaluation(examId).subscribe({
       next: (evalRes: any) => {
         this.addLogMessage(`Evaluation completed! Processing results...`, 'success');
+        // Show any backend warnings (skipped students, mock scores used)
+        if (evalRes.warnings?.length) {
+          evalRes.warnings.forEach((w: string) => {
+            this.addLogMessage(w, 'error');
+            this.toastService.show('warn', w);
+          });
+        }
         this.updateProgress(100, this.totalPapers, this.totalPapers);
         
         setTimeout(() => {
@@ -239,12 +239,13 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy, AfterViewIn
           const enableCrossCheck = this.uploadForm.get('enableCrossCheck')?.value;
           
           if (enableCrossCheck && evalRes.data?.results) {
-            // Transform results to include extracted answers
             this.crossCheckPapers = evalRes.data.results.map((result: any) => {
               const extractedAnswer = result.extractedAnswer || {};
               const aiDetails = result.aiEvaluationDetails || {};
-              
+
               return {
+                resultId: result._id,
+                usedMockEvaluation: result.usedMockEvaluation === true,
                 success: true,
                 student_extracted: {
                   Answer: {
@@ -398,6 +399,7 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy, AfterViewIn
   private updateCrossCheckModal(paper: any) {
     const evaluation = paper.evaluation || {};
     const extracted = paper.student_extracted?.Answer || {};
+    // paper.usedMockEvaluation is used later in this method to show/hide section inputs
     
     console.log('Updating modal with:', { evaluation, extracted });
     
@@ -416,65 +418,96 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy, AfterViewIn
     }
     if (manualMaxMarksEl) manualMaxMarksEl.textContent = evaluation.max_marks?.toString() || '0';
     
+    const hasSectionScores = evaluation.section_scores && Object.keys(evaluation.section_scores).length > 0;
+    const isMock = paper?.usedMockEvaluation === true;
+
     // Update Section-wise AI Marks
     const aiQuestionMarks = document.getElementById('aiQuestionMarks');
-    if (aiQuestionMarks && evaluation.section_scores) {
+    if (aiQuestionMarks) {
       aiQuestionMarks.innerHTML = '';
-      const sections = ['Definition', 'Body', 'Conclusion'];
-      sections.forEach(section => {
-        const sectionData = evaluation.section_scores[section];
-        if (sectionData) {
-          const semanticScore = sectionData.scores?.semantic_similarity 
-            ? Math.round(sectionData.scores.semantic_similarity * 100) 
-            : 0;
-          const div = document.createElement('div');
-          div.className = 'question-item';
-          div.innerHTML = `
-            <span class="question-name">${section}</span>
-            <span class="question-score">
-              ${sectionData.marks_awarded}/${sectionData.max_marks}
-              <small style="font-size:0.7rem; color:#6c757d; margin-left:8px;">
-                (${semanticScore}% match)
-              </small>
-            </span>
-          `;
-          aiQuestionMarks.appendChild(div);
-        }
-      });
+      if (hasSectionScores) {
+        const sections = ['Definition', 'Body', 'Conclusion'];
+        sections.forEach(section => {
+          const sectionData = evaluation.section_scores[section];
+          if (sectionData) {
+            const semanticScore = sectionData.scores?.semantic_similarity
+              ? Math.round(sectionData.scores.semantic_similarity * 100)
+              : 0;
+            const div = document.createElement('div');
+            div.className = 'question-item';
+            div.innerHTML = `
+              <span class="question-name">${section}</span>
+              <span class="question-score">
+                ${sectionData.marks_awarded}/${sectionData.max_marks}
+                <small style="font-size:0.7rem; color:#6c757d; margin-left:8px;">(${semanticScore}% match)</small>
+              </span>
+            `;
+            aiQuestionMarks.appendChild(div);
+          }
+        });
+      } else {
+        aiQuestionMarks.innerHTML = `<p style="color:#856404; background:#fff3cd; padding:8px; border-radius:6px; margin:0;">
+          ${isMock ? '⚠️ Mock score used — AI was unavailable when this paper was evaluated.' : 'Section breakdown not available.'}
+        </p>`;
+      }
     }
-    
+
     // Update Manual Adjustment Inputs
     const manualQuestionMarks = document.getElementById('manualQuestionMarks');
-    if (manualQuestionMarks && evaluation.section_scores) {
+    if (manualQuestionMarks) {
       manualQuestionMarks.innerHTML = '';
-      const sections = ['Definition', 'Body', 'Conclusion'];
-      sections.forEach(section => {
-        const sectionData = evaluation.section_scores[section];
-        if (sectionData) {
-          const div = document.createElement('div');
-          div.className = 'question-item';
-          div.innerHTML = `
-            <span class="question-name">${section}</span>
+      if (hasSectionScores) {
+        const sections = ['Definition', 'Body', 'Conclusion'];
+        sections.forEach(section => {
+          const sectionData = evaluation.section_scores[section];
+          if (sectionData) {
+            const div = document.createElement('div');
+            div.className = 'question-item';
+            div.innerHTML = `
+              <span class="question-name">${section}</span>
+              <span class="question-score">
+                <input type="number" class="mark-adjust-input"
+                       id="manual_${section}"
+                       value="${sectionData.marks_awarded}"
+                       min="0" max="${sectionData.max_marks}"
+                       step="0.5">
+                <span style="margin-left: 4px;">/ ${sectionData.max_marks}</span>
+              </span>
+            `;
+            manualQuestionMarks.appendChild(div);
+          }
+        });
+        sections.forEach(section => {
+          const input = document.getElementById(`manual_${section}`) as HTMLInputElement;
+          if (input) {
+            input.addEventListener('input', () => this.updateManualScore());
+          }
+        });
+      } else {
+        // No section scores — show a single manual input for the total
+        const totalMaxMarks = evaluation.max_marks || 0;
+        const currentScore = evaluation.total_marks || 0;
+        manualQuestionMarks.innerHTML = `
+          <div class="question-item">
+            <span class="question-name">Total Score</span>
             <span class="question-score">
-              <input type="number" class="mark-adjust-input" 
-                     id="manual_${section}" 
-                     value="${sectionData.marks_awarded}" 
-                     min="0" max="${sectionData.max_marks}" 
-                     step="0.5">
-              <span style="margin-left: 4px;">/ ${sectionData.max_marks}</span>
+              <input type="number" class="mark-adjust-input"
+                     id="manual_total"
+                     value="${currentScore}"
+                     min="0" max="${totalMaxMarks}"
+                     step="1">
+              <span style="margin-left: 4px;">/ ${totalMaxMarks}</span>
             </span>
-          `;
-          manualQuestionMarks.appendChild(div);
+          </div>
+        `;
+        const totalInput = document.getElementById('manual_total') as HTMLInputElement;
+        if (totalInput) {
+          totalInput.addEventListener('input', () => {
+            const manualScoreEl = document.getElementById('manualScore') as HTMLInputElement;
+            if (manualScoreEl) manualScoreEl.value = totalInput.value;
+          });
         }
-      });
-      
-      // Add event listeners
-      sections.forEach(section => {
-        const input = document.getElementById(`manual_${section}`) as HTMLInputElement;
-        if (input) {
-          input.addEventListener('input', () => this.updateManualScore());
-        }
-      });
+      }
     }
     
     // Update AI Feedback - IMPROVED VERSION
@@ -615,29 +648,76 @@ if (feedbackContent && evaluation.feedback) {
   }
 
   approveEvaluation() {
-    // Save approved evaluation
-    this.currentPaperIndex++;
-    this.loadCurrentPaperForCrossCheck();
+    const paper = this.crossCheckPapers[this.currentPaperIndex];
+    const resultId = paper?.resultId;
+
+    if (resultId) {
+      this.facultyService.updateEvaluationResult(resultId, {
+        crossCheckCompleted: true,
+        crossCheckNotes: 'AI evaluation approved without changes'
+      }).subscribe({
+        next: () => {
+          this.toastService.show('success', 'Evaluation approved!');
+          this.currentPaperIndex++;
+          this.loadCurrentPaperForCrossCheck();
+        },
+        error: () => {
+          // Still advance — don't block the faculty on a network error
+          this.toastService.show('warn', 'Could not save approval — moving to next paper.');
+          this.currentPaperIndex++;
+          this.loadCurrentPaperForCrossCheck();
+        }
+      });
+    } else {
+      this.currentPaperIndex++;
+      this.loadCurrentPaperForCrossCheck();
+    }
   }
 
   saveAndContinue() {
+    const paper = this.crossCheckPapers[this.currentPaperIndex];
+    const resultId = paper?.resultId;
+
     const sections = ['Definition', 'Body', 'Conclusion'];
+    const questionWiseMarks: any[] = [];
     let totalMarks = 0;
-    const adjustments: any = {};
-    
-    sections.forEach(section => {
+
+    sections.forEach((section, idx) => {
       const input = document.getElementById(`manual_${section}`) as HTMLInputElement;
+      const sectionData = paper?.evaluation?.section_scores?.[section];
       if (input) {
-        adjustments[section] = parseFloat(input.value);
-        totalMarks += adjustments[section];
+        const marks = parseFloat(input.value) || 0;
+        totalMarks += marks;
+        questionWiseMarks.push({
+          questionNumber: idx + 1,
+          marksObtained: marks,
+          maxMarks: parseFloat(input.max) || sectionData?.max_marks || 0,
+          aiScore: sectionData?.marks_awarded ?? marks,
+          remarks: section
+        });
       }
     });
-    
-    console.log('Saving adjustments:', adjustments, 'Total:', totalMarks);
-    this.toastService.show('success', `Adjustments saved! New total: ${totalMarks} marks`);
-    
-    this.currentPaperIndex++;
-    this.loadCurrentPaperForCrossCheck();
+
+    if (resultId) {
+      this.facultyService.updateEvaluationResult(resultId, {
+        questionWiseMarks,
+        crossCheckCompleted: true,
+        crossCheckNotes: `Manual review: total ${totalMarks} marks`
+      }).subscribe({
+        next: () => {
+          this.toastService.show('success', `Saved! New total: ${totalMarks} marks`);
+          this.currentPaperIndex++;
+          this.loadCurrentPaperForCrossCheck();
+        },
+        error: (err: any) => {
+          this.toastService.show('error', err.error?.message || 'Failed to save adjustments.');
+        }
+      });
+    } else {
+      this.toastService.show('warn', 'No result ID — adjustments not saved to database.');
+      this.currentPaperIndex++;
+      this.loadCurrentPaperForCrossCheck();
+    }
   }
 
   closeProgressModal() { 

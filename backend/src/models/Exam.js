@@ -81,6 +81,10 @@ const examSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    modelAnswerUploadedToAI: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

@@ -28,66 +28,60 @@ function simulateAIEvaluation(maxMarks, strictness) {
 }
 
 // ==================== FASTAPI INTEGRATION ====================
+const FASTAPI_BASE = process.env.FASTAPI_URL || 'http://localhost:8000';
+
 const callFastAPIEvaluation = async (studentImagePath, examId) => {
     try {
-        // Check if file exists
         if (!fs.existsSync(studentImagePath)) {
             console.error(`File not found: ${studentImagePath}`);
             return null;
         }
-        
+
         const formData = new FormData();
         formData.append('file', fs.createReadStream(studentImagePath));
-        
-        // Call FastAPI for evaluation
+
         const response = await axios.post(
-            'http://localhost:8000/api/evaluation/evaluate-image',
+            `${FASTAPI_BASE}/api/evaluation/evaluate-image?exam_id=${examId}`,
             formData,
             { headers: { ...formData.getHeaders() }, timeout: 600000 }
         );
-        
+
         if (response.data.success && response.data.evaluation) {
-            // Log extracted data for debugging
-            console.log('📝 Extracted student answer from FastAPI:');
-            console.log('   Definition:', response.data.student_extracted?.Answer?.Definition?.substring(0, 100) || 'Not found');
-            console.log('   Body:', response.data.student_extracted?.Answer?.Body?.substring(0, 100) || 'Not found');
-            console.log('   Conclusion:', response.data.student_extracted?.Answer?.Conclusion?.substring(0, 100) || 'Not found');
-            
             return {
                 success: true,
                 totalMarks: response.data.evaluation.total_marks,
                 maxMarks: response.data.evaluation.max_marks,
                 percentage: response.data.evaluation.percentage,
                 detailedResult: response.data.evaluation,
-                studentExtracted: response.data.student_extracted // Include the extracted student answer
+                studentExtracted: response.data.student_extracted
             };
         }
         return null;
     } catch (error) {
-        console.error('FastAPI call failed:', error.message);
+        console.error('FastAPI evaluation call failed:', error.message);
         if (error.response) {
-            console.error('Response data:', error.response.data);
+            console.error('FastAPI response:', error.response.data);
         }
         return null;
     }
 };
 
-const uploadModelAnswerToFastAPI = async (modelAnswerPath) => {
+const uploadModelAnswerToFastAPI = async (modelAnswerPath, examId) => {
     try {
         if (!fs.existsSync(modelAnswerPath)) {
             console.error(`Model answer file not found: ${modelAnswerPath}`);
             return null;
         }
-        
+
         const formData = new FormData();
         formData.append('file', fs.createReadStream(modelAnswerPath));
-        
+
         const response = await axios.post(
-            'http://localhost:8000/api/evaluation/upload-model',
+            `${FASTAPI_BASE}/api/evaluation/upload-model?exam_id=${examId}`,
             formData,
             { headers: { ...formData.getHeaders() }, timeout: 60000 }
         );
-        
+
         return response.data;
     } catch (error) {
         console.error('Failed to upload model answer to FastAPI:', error.message);
@@ -154,80 +148,85 @@ const startEvaluation = async (req, res) => {
         // Fix: Use correct path
         const backendRoot = path.resolve(__dirname, '../..');
         
-        // Upload model answer to FastAPI if not already done
+        const examIdStr = exam._id.toString();
+
+        // Upload model answer to FastAPI (scoped by examId so concurrent exams don't conflict)
         if (!exam.modelAnswerUploadedToAI && exam.modelAnswer) {
             const modelFileName = path.basename(exam.modelAnswer.filePath);
             const modelAnswerPath = path.join(backendRoot, 'uploads/model-answers', modelFileName);
             console.log(`Looking for model answer at: ${modelAnswerPath}`);
-            
+
             if (fs.existsSync(modelAnswerPath)) {
-                const uploadResult = await uploadModelAnswerToFastAPI(modelAnswerPath);
+                const uploadResult = await uploadModelAnswerToFastAPI(modelAnswerPath, examIdStr);
                 if (uploadResult && uploadResult.success) {
                     exam.modelAnswerUploadedToAI = true;
                     await exam.save();
-                    console.log('Model answer uploaded to FastAPI successfully');
+                    console.log(`Model answer uploaded to FastAPI for exam ${examIdStr}`);
                 } else {
-                    console.log('Failed to upload model answer to FastAPI, using mock evaluation');
+                    console.log(`Failed to upload model answer to FastAPI for exam ${examIdStr} — will use mock scores`);
                 }
             } else {
-                console.log(`Model answer file not found: ${modelAnswerPath}`);
+                console.log(`Model answer file not found: ${modelAnswerPath} — will use mock scores`);
             }
         }
-        
-        const students = await User.find({ 
-            role: 'student', 
-            department: exam.department 
-        });
-        
+
+        // Look up registered students by email (not by department — department filter was too narrow)
+        const emailList = exam.studentAnswerSheets.map(s => s.email);
+        const students = await User.find({ role: 'student', email: { $in: emailList } });
+        const studentByEmail = new Map(students.map(s => [s.email, s]));
+
         const evaluations = [];
-        
+        const skippedStudents = []; // track emails not found in DB
+
         for (let i = 0; i < exam.studentAnswerSheets.length; i++) {
             const sheet = exam.studentAnswerSheets[i];
-            const student = students.find(s => s.email === sheet.email);
-            
+            const student = studentByEmail.get(sheet.email);
+
             if (!student) {
-                console.log(`Student not found for email: ${sheet.email}`);
+                console.log(`Student not registered: ${sheet.email} — skipping`);
+                skippedStudents.push(sheet.email);
                 continue;
             }
-            
+
             const studentFileName = path.basename(sheet.filePath);
             const studentImagePath = path.join(backendRoot, 'uploads/student-papers', studentFileName);
-            console.log(`Evaluating: ${student.email} - ${studentImagePath}`);
-            
-            // DECLARE variables outside the if block
+            console.log(`Evaluating ${student.email}`);
+
             let finalScore, percentage, detailedEval;
             let extractedAnswerData = null;
-            let aiResult = null;
-            
-            // Check if file exists
-            if (fs.existsSync(studentImagePath)) {
-                // Try FastAPI evaluation first
-                aiResult = await callFastAPIEvaluation(studentImagePath, exam._id);
-                
-                if (aiResult && aiResult.success) {
-                    finalScore = aiResult.totalMarks;
-                    percentage = aiResult.percentage;
-                    detailedEval = aiResult.detailedResult;
-                    // Extract the student answer data
-                    extractedAnswerData = aiResult.studentExtracted?.Answer || null;
-                    console.log(`✅ AI Evaluation for ${student.email}: ${finalScore}/${exam.maxMarks} (${percentage}%)`);
-                    if (extractedAnswerData) {
-                        console.log(`   Extracted answer length: Def=${extractedAnswerData.Definition?.length || 0}, Body=${extractedAnswerData.Body?.length || 0}, Concl=${extractedAnswerData.Conclusion?.length || 0}`);
+            let usedMock = false;
+
+            try {
+                if (fs.existsSync(studentImagePath)) {
+                    const aiResult = await callFastAPIEvaluation(studentImagePath, examIdStr);
+
+                    if (aiResult && aiResult.success) {
+                        // Scale FastAPI percentage to exam.maxMarks
+                        percentage = parseFloat(aiResult.percentage.toFixed(2));
+                        finalScore = Math.round((percentage / 100) * exam.maxMarks);
+                        detailedEval = aiResult.detailedResult;
+                        extractedAnswerData = aiResult.studentExtracted?.Answer || null;
+                        console.log(`  AI result: ${finalScore}/${exam.maxMarks} (${percentage}%)`);
+                    } else {
+                        usedMock = true;
+                        finalScore = simulateAIEvaluation(exam.maxMarks, exam.evaluationStrictness);
+                        percentage = parseFloat(((finalScore / exam.maxMarks) * 100).toFixed(2));
+                        console.log(`  FastAPI returned no result — mock: ${finalScore}/${exam.maxMarks}`);
                     }
                 } else {
-                    // Fallback to mock if FastAPI fails
+                    usedMock = true;
                     finalScore = simulateAIEvaluation(exam.maxMarks, exam.evaluationStrictness);
-                    percentage = (finalScore / exam.maxMarks) * 100;
-                    console.log(`⚠️ FastAPI failed, using mock for ${student.email}: ${finalScore}/${exam.maxMarks}`);
+                    percentage = parseFloat(((finalScore / exam.maxMarks) * 100).toFixed(2));
+                    console.log(`  Image not found — mock: ${finalScore}/${exam.maxMarks}`);
                 }
-            } else {
-                // File doesn't exist, use mock
+            } catch (studentError) {
+                // Isolate: one student's failure must not abort the entire evaluation
+                usedMock = true;
                 finalScore = simulateAIEvaluation(exam.maxMarks, exam.evaluationStrictness);
-                percentage = (finalScore / exam.maxMarks) * 100;
-                console.log(`⚠️ Student paper not found: ${studentImagePath}, using mock`);
+                percentage = parseFloat(((finalScore / exam.maxMarks) * 100).toFixed(2));
+                console.error(`  Error evaluating ${student.email}:`, studentError.message, '— falling back to mock');
             }
-            
-            // Now push the evaluation with all data
+
             evaluations.push({
                 examId: exam._id,
                 studentId: student._id,
@@ -235,38 +234,51 @@ const startEvaluation = async (req, res) => {
                 totalMarksObtained: finalScore,
                 maxMarks: exam.maxMarks,
                 aiScore: finalScore,
-                percentage: percentage,
+                percentage,
                 grade: calculateGrade(percentage),
-                finalScore: finalScore,
-                crossCheckRequired: exam.enableCrossCheck && percentage < 40,
+                finalScore,
+                crossCheckRequired: exam.enableCrossCheck,
                 evaluationStatus: 'ai_evaluated',
                 evaluatedAt: new Date(),
-                // Include detailed data if available
                 aiEvaluationDetails: detailedEval || null,
-                // IMPORTANT: Include the extracted student answer in the correct format
-                extractedAnswer: extractedAnswerData || {
-                    Definition: '',
-                    Body: '',
-                    Conclusion: ''
-                }
+                extractedAnswer: extractedAnswerData || { Definition: '', Body: '', Conclusion: '' },
+                usedMockEvaluation: usedMock
             });
         }
-        
+
+        let insertedResults = [];
         if (evaluations.length > 0) {
-            await EvaluationResult.insertMany(evaluations);
+            insertedResults = await EvaluationResult.insertMany(evaluations);
         }
-        
+
         exam.status = 'completed';
-        exam.evaluatedCount = evaluations.length;
+        exam.evaluatedCount = insertedResults.length;
         await exam.save();
-        
+
+        // Merge MongoDB _id back so the frontend cross-check modal can call PUT /results/:id
+        const resultsWithIds = evaluations.map((ev, idx) => ({
+            ...ev,
+            _id: insertedResults[idx]?._id
+        }));
+
+        const warnings = [];
+        if (skippedStudents.length > 0) {
+            warnings.push(`${skippedStudents.length} student(s) not registered in the system and were skipped: ${skippedStudents.join(', ')}`);
+        }
+        const mockCount = evaluations.filter(e => e.usedMockEvaluation).length;
+        if (mockCount > 0) {
+            warnings.push(`${mockCount} student paper(s) used mock scores (AI unavailable or file missing)`);
+        }
+
         res.status(200).json({
             success: true,
-            message: `Evaluation completed for ${evaluations.length} student(s)`,
-            data: { 
-                examId: exam._id, 
-                evaluatedCount: evaluations.length,
-                results: evaluations
+            message: `Evaluation completed for ${insertedResults.length} student(s)`,
+            warnings: warnings.length > 0 ? warnings : undefined,
+            data: {
+                examId: exam._id,
+                evaluatedCount: insertedResults.length,
+                skippedStudents,
+                results: resultsWithIds
             }
         });
         

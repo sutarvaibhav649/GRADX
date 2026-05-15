@@ -1,0 +1,91 @@
+{
+  "evaluation_result": {
+    "total_marks": 3,
+    "max_marks": 7,
+    "percentage": 42.9,
+    "section_scores": {
+      "Definition": {
+        "marks_awarded": 1,
+        "max_marks": 2,
+        "percentage": 50.0,
+        "scores": {
+          "semantic_similarity": 0.431,
+          "coherence": 1.0,
+          "concept_coverage": 0.0,
+          "depth_score": 0.474
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.0,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Deep Learning is a subset of Machine Learning that uses ne",
+        "model_text": "Artificial Intelligence is a branch of computer science that focuses on building systems capable of p"
+      },
+      "Body": {
+        "marks_awarded": 1,
+        "max_marks": 3,
+        "percentage": 33.3,
+        "scores": {
+          "semantic_similarity": 0.4,
+          "coherence": 1.0,
+          "concept_coverage": 0.125,
+          "depth_score": 0.468
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.111,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Deep Learning models, also known as deep neural networks, consis",
+        "model_text": "Artificial Intelligence enables machines to learn from data and improve performance using techniques s"
+      },
+      "Conclusion": {
+        "marks_awarded": 1,
+        "max_marks": 2,
+        "percentage": 50.0,
+        "scores": {
+          "semantic_similarity": 0.345,
+          "coherence": 1.0,
+          "concept_coverage": 0.0,
+          "depth_score": 0.408
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.0,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Deep Learning powers nodern A applications like inage rec",
+        "model_text": "Artificial Intelligence is widely used in fields such as healthcare, education, transportation, busines"
+      }
+    },
+    "feedback": {
+      "strengths": [
+        "\ud83d\udc4d Definition: Good understanding",
+        "\ud83d\udc4d Conclusion: Good understanding"
+      ],
+      "improvements": [
+        "\ud83d\udd11 Definition: Missing key concepts",
+        "\ud83d\udcda Body: Needs improvement",
+        "\ud83d\udd11 Body: Missing key concepts",
+        "\ud83d\udd11 Conclusion: Missing key concepts"
+      ],
+      "warnings": []
+    },
+    "config_used": "Extracted Model Answer"
+  },
+  "student_answer": {
+    "Definition": "Deep Learning is a subset of Machine Learning that uses ne",
+    "Body": "Deep Learning models, also known as deep neural networks, consis",
+    "Conclusion": "Deep Learning powers nodern A applications like inage rec"
+  },
+  "model_answer": {
+    "Definition": "Artificial Intelligence is a branch of computer science that focuses on building systems capable of p",
+    "Body": "Artificial Intelligence enables machines to learn from data and improve performance using techniques s",
+    "Conclusion": "Artificial Intelligence is widely used in fields such as healthcare, education, transportation, busines"
+  },
+  "timestamp": "2026-05-16T02:57:33.979310"
+}

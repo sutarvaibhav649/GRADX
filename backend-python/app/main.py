@@ -1,11 +1,11 @@
 # app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import evaluation
 import os
 
-# Import config to verify API key is set
+# Load .env before any service modules read environment variables
 from app.config import OPENROUTER_API_KEY
+from app.routes import evaluation
 
 app = FastAPI(title="AI Evaluation Service", version="1.0.0")
 

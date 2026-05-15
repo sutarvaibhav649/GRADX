@@ -12,14 +12,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 import re
 
 # Download required NLTK data
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt')
-try:
-    nltk.data.find('tokenizers/punkt_tab')
-except LookupError:
-    nltk.download('punkt_tab')
+for _pkg, _path in [('punkt', 'tokenizers/punkt'), ('punkt_tab', 'tokenizers/punkt_tab'), ('stopwords', 'corpora/stopwords')]:
+    try:
+        nltk.data.find(_path)
+    except LookupError:
+        nltk.download(_pkg, quiet=True)
 
 # Load the embedding model
 SEMANTIC_MODEL = SentenceTransformer("all-mpnet-base-v2")
@@ -44,7 +41,10 @@ class AdvancedEvaluator:
     def __init__(self):
         self.current_config = {}
         self.evaluation_history = []
-        self.stop_words = set(nltk.corpus.stopwords.words('english')) if 'stopwords' in nltk.corpus.__dict__ else set()
+        try:
+            self.stop_words = set(nltk.corpus.stopwords.words('english'))
+        except LookupError:
+            self.stop_words = set()
     
     def auto_configure_from_model(self, model_answer: Dict, question_type: str = "conceptual", 
                                    cheating_threshold: float = 0.4):
