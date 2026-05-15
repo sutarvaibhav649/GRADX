@@ -1,0 +1,112 @@
+/* ===== Global Styling ===== */
+* {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fb;
+    color: var(--dark);
+    line-height: 1.6;
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+/* ===== LEFT PDF SECTION ===== */
+.pdf-section {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    border-right: 3px solid #b7d4ff; /* Light Blue Border */
+    background: #ffffff;
+}
+
+.pdf-header {
+    padding: 15px;
+    font-size: 20px;
+    color: #1d4e89; /* Deep Blue */
+    font-weight: 600;
+    background: linear-gradient(to right, #d9e8ff, #eef5ff);
+    border-bottom: 2px solid #bcd8ff;
+    text-align: center;
+}
+
+.pdf-section iframe {
+    flex: 1;
+    width: 100%;
+    border: none;
+}
+
+/* ===== RIGHT MARKS SECTION ===== */
+.marks-section {
+    flex: 1;
+    padding: 25px;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.title {
+    text-align: center;
+    color: #1d4e89;
+    font-size: 22px;
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+}
+
+/* ===== QUESTION ROWS ===== */
+.question-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f3f8ff;
+    border: 1px solid #c7ddff;
+    border-radius: 12px;
+    padding: 12px 15px;
+    margin-bottom: 15px;
+    transition: 0.3s;
+}
+
+.question-row:hover {
+    background: #e6f0ff;
+    transform: scale(1.02);
+}
+
+.marks-input {
+    width: 60px;
+    padding: 6px;
+    font-size: 16px;
+    text-align: center;
+    border: 1px solid #9fbff3;
+    border-radius: 6px;
+    outline: none;
+    background: #f0f0f0;
+}
+
+.marks-input:disabled {
+    background: #ececec;
+}
+
+.total {
+    font-weight: 600;
+    color: #1d4e89;
+}
+
+/* ===== BUTTON ===== */
+.update-btn {
+    margin-top: auto;
+    padding: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    background: #2a6bcc;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.update-btn:hover {
+    background: #1f54a3;
+    transform: scale(1.05);
+}

@@ -1,0 +1,88 @@
+<div class="dashboard">
+    <header class="dashboard-header">
+        <nav class="dashboard-nav">
+            <div class="nav-logo">
+                <i class="fas fa-robot"></i>
+                <span>AI Evaluator</span>
+            </div>
+            <div class="user-menu">
+                <div class="user-avatar">{{ userInitial }}</div>
+                <div>
+                    <div class="user-name">{{ userName }}</div>
+                    <div class="user-role">Student</div>
+                </div>
+                <button class="btn btn-outline btn-sm" (click)="logout()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <main class="dashboard-content">
+        <div class="stats-grid">
+            <div class="stat-card student">
+                <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
+                <div class="stat-info">
+                    <h3>{{ stats.totalEvaluated }}</h3>
+                    <p>Evaluated Papers</p>
+                </div>
+            </div>
+            <div class="stat-card student">
+                <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+                <div class="stat-info">
+                    <h3>{{ stats.averageScore }}%</h3>
+                    <p>Average Score</p>
+                </div>
+            </div>
+            <div class="stat-card student">
+                <div class="stat-icon"><i class="fas fa-trophy"></i></div>
+                <div class="stat-info">
+                    <h3>{{ stats.topPerformances }}</h3>
+                    <p>Top Performances</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div class="card-header">
+                <h2 class="card-title">My Evaluated Answer Sheets</h2>
+                <div class="card-actions">
+                    <button class="btn btn-outline btn-sm" (click)="loadDashboard()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <ul class="file-list">
+                    @for (result of results; track result._id) {
+                        <li class="answer-card">
+                            <div class="answer-left">
+                                <div class="file-icon" style="background-color:rgb(240,112,52)">
+                                    <i class="fas fa-file-pdf"></i>
+                                </div>
+                                <div class="answer-info">
+                                    <h3 class="answer-title">{{ result.examId?.subject }} — {{ result.examId?.examType | uppercase }}</h3>
+                                    <p class="answer-marks">
+                                        {{ result.finalScore }} / {{ result.maxMarks }}
+                                        &nbsp;·&nbsp; Grade: <strong>{{ result.grade }}</strong>
+                                        &nbsp;·&nbsp; {{ result.percentage }}%
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="answer-right">
+                                <span style="font-size:0.8rem;padding:4px 10px;border-radius:20px;"
+                                    [style.background]="result.evaluationStatus === 'finalized' ? '#d4edda' : '#fff3cd'"
+                                    [style.color]="result.evaluationStatus === 'finalized' ? '#155724' : '#856404'">
+                                    {{ result.evaluationStatus }}
+                                </span>
+                            </div>
+                        </li>
+                    }
+                    @empty {
+                        <li style="padding:2rem;text-align:center;color:#888;">No evaluated papers yet.</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </main>
+</div>

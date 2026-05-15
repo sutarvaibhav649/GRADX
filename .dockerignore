@@ -1,0 +1,13 @@
+node_modules
+.git
+.env.local
+.DS_Store
+*.log
+npm-debug.log*
+uploads/
+evaluations/
+dist/
+tmp/
+*.md
+.vscode/
+.idea/

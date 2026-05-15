@@ -1,0 +1,144 @@
+<div class="dashboard">
+    <header class="dashboard-header">
+        <nav class="dashboard-nav">
+            <div class="nav-logo">
+                <i class="fas fa-robot"></i>
+                <span>AI Evaluator</span>
+            </div>
+            <div class="user-menu">
+                <div class="user-avatar">{{ userInitial }}</div>
+                <div>
+                    <div class="user-name">{{ userName }}</div>
+                    <div class="user-role">Administrator</div>
+                </div>
+                <button class="btn btn-outline btn-sm" (click)="logout()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <main class="dashboard-content">
+        <div class="stats-grid">
+            <div class="stat-card admin">
+                <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
+                <div class="stat-info">
+                    <h3>{{ stats.completedEvals }}</h3>
+                    <p>Total Papers Evaluated</p>
+                </div>
+            </div>
+            <div class="stat-card admin">
+                <div class="stat-icon"><i class="fas fa-users"></i></div>
+                <div class="stat-info">
+                    <h3>{{ stats.totalStudents }}</h3>
+                    <p>Active Students</p>
+                </div>
+            </div>
+            <div class="stat-card admin">
+                <div class="stat-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                <div class="stat-info">
+                    <h3>{{ stats.totalFaculty }}</h3>
+                    <p>Faculty Members</p>
+                </div>
+            </div>
+            <div class="stat-card admin">
+                <div class="stat-icon"><i class="fas fa-percentage"></i></div>
+                <div class="stat-info">
+                    <h3>{{ stats.systemAccuracy }}%</h3>
+                    <p>System Accuracy</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div class="card-header">
+                <h2 class="card-title">System Overview</h2>
+                <div class="card-actions">
+                    <button class="btn btn-primary btn-sm" (click)="loadDashboard()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <div class="stat-card admin">
+                            <div class="stat-icon"><i class="fas fa-server"></i></div>
+                            <div class="stat-info">
+                                <h3>Running</h3>
+                                <p>AI Engine Status</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="stat-card admin">
+                            <div class="stat-icon"><i class="fas fa-database"></i></div>
+                            <div class="stat-info">
+                                <h3>Online</h3>
+                                <p>Database Status</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="stat-card admin">
+                            <div class="stat-icon"><i class="fas fa-users"></i></div>
+                            <div class="stat-info">
+                                <h3>{{ stats.totalUsers }}</h3>
+                                <p>Total Users</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div class="card-header">
+                <h2 class="card-title">Recent Evaluations</h2>
+            </div>
+            <div class="card-body">
+                <ul class="file-list">
+                    @for (exam of recentExams; track exam._id) {
+                        <li class="answer-card">
+                            <div class="answer-left">
+                                <div class="file-icon" style="background-color:rgb(240,112,52)">
+                                    <i class="fas fa-file-pdf"></i>
+                                </div>
+                                <div class="answer-info">
+                                    <h3 class="answer-title">{{ exam.subject }} — {{ exam.examType | uppercase }}</h3>
+                                    <p class="answer-marks">
+                                        {{ exam.department | uppercase }} · {{ exam.facultyId?.fullName }} · {{ exam.status }}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="answer-right">
+                                <span style="font-size:0.8rem;padding:4px 10px;border-radius:20px;"
+                                    [style.background]="exam.status === 'completed' ? '#d4edda' : '#fff3cd'"
+                                    [style.color]="exam.status === 'completed' ? '#155724' : '#856404'">
+                                    {{ exam.status }}
+                                </span>
+                            </div>
+                        </li>
+                    }
+                    @empty {
+                        <li style="padding:2rem;text-align:center;color:#888;">No evaluations yet.</li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div class="card-header">
+                <h2 class="card-title">Quick Actions</h2>
+            </div>
+            <div class="card-body">
+                <div class="form-row">
+                    <button class="btn btn-outline"><i class="fas fa-cog"></i> System Settings</button>
+                    <button class="btn btn-outline"><i class="fas fa-sync"></i> Update AI Model</button>
+                    <button class="btn btn-outline"><i class="fas fa-download"></i> Export Data</button>
+                    <button class="btn btn-outline"><i class="fas fa-chart-bar"></i> Generate Reports</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>

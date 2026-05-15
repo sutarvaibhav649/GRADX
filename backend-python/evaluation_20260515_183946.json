@@ -1,0 +1,91 @@
+{
+  "evaluation_result": {
+    "total_marks": 3,
+    "max_marks": 7,
+    "percentage": 42.9,
+    "section_scores": {
+      "Definition": {
+        "marks_awarded": 1,
+        "max_marks": 2,
+        "percentage": 50.0,
+        "scores": {
+          "semantic_similarity": 0.367,
+          "coherence": 1.0,
+          "concept_coverage": 0.0,
+          "depth_score": 0.557
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.0,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Artificial Intelligence is a branch of computer science that focuses on building systems capable of performing tasks that normally require human intelligence.",
+        "model_text": "Deep Learning is a subset of Machine Learning that uses ne"
+      },
+      "Body": {
+        "marks_awarded": 1,
+        "max_marks": 3,
+        "percentage": 33.3,
+        "scores": {
+          "semantic_similarity": 0.514,
+          "coherence": 1.0,
+          "concept_coverage": 0.167,
+          "depth_score": 0.66
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.105,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "AI enables machines to learn from data and improve performance using techniques such as machine learning and deep learning.",
+        "model_text": "Deep Learning models, also known as deep neural networks, consist"
+      },
+      "Conclusion": {
+        "marks_awarded": 1,
+        "max_marks": 2,
+        "percentage": 50.0,
+        "scores": {
+          "semantic_similarity": 0.362,
+          "coherence": 1.0,
+          "concept_coverage": 0.0,
+          "depth_score": 0.553
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.0,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Artificial Intelligence is widely used in healthcare, education, and business.",
+        "model_text": "Deep Learning powers modern AI applications like image rec"
+      }
+    },
+    "feedback": {
+      "strengths": [
+        "\ud83d\udc4d Definition: Good understanding",
+        "\ud83d\udc4d Conclusion: Good understanding"
+      ],
+      "improvements": [
+        "\ud83d\udd11 Definition: Missing key concepts",
+        "\ud83d\udcda Body: Needs improvement",
+        "\ud83d\udd11 Body: Missing key concepts",
+        "\ud83d\udd11 Conclusion: Missing key concepts"
+      ],
+      "warnings": []
+    },
+    "config_used": "Extracted Model Answer"
+  },
+  "student_answer": {
+    "Definition": "Artificial Intelligence is a branch of computer science that focuses on building systems capable of performing tasks that normally require human intelligence.",
+    "Body": "AI enables machines to learn from data and improve performance using techniques such as machine learning and deep learning.",
+    "Conclusion": "Artificial Intelligence is widely used in healthcare, education, and business."
+  },
+  "model_answer": {
+    "Definition": "Deep Learning is a subset of Machine Learning that uses ne",
+    "Body": "Deep Learning models, also known as deep neural networks, consist",
+    "Conclusion": "Deep Learning powers modern AI applications like image rec"
+  },
+  "timestamp": "2026-05-15T18:39:46.106167"
+}

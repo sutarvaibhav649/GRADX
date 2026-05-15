@@ -1,0 +1,71 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { BehaviorSubject, tap } from 'rxjs';
+import { environment } from '../../../environments/environment';
+import { ToastService } from '../toast.service';
+
+@Injectable({ providedIn: 'root' })
+export class AuthService {
+  private api = environment.apiUrl;
+  private userSubject = new BehaviorSubject<any>(this.loadUser());
+  currentUser$ = this.userSubject.asObservable();
+
+  constructor(private http: HttpClient, private toastService: ToastService) {}
+
+  private loadUser() {
+    try {
+      if (typeof localStorage === 'undefined') return null;
+      const u = localStorage.getItem('gradx_user');
+      return u ? JSON.parse(u) : null;
+    } catch (e) {
+      this.toastService.show('error', 'Failed to load user data. Please login again.');
+      console.warn('Failed to load user from localStorage', e);
+      localStorage.removeItem('gradx_user');
+      localStorage.removeItem('gradx_token');
+      return null;
+    }
+  }
+
+  login(email: string, password: string, role: string) {
+    return this.http.post<any>(`${this.api}/auth/login`, { email, password, role }).pipe(
+      tap(res => {
+        localStorage.setItem('gradx_token', res.token);
+        localStorage.setItem('gradx_user', JSON.stringify(res.user));
+        this.userSubject.next(res.user);
+      })
+    );
+  }
+
+  signup(data: any) {
+    return this.http.post<any>(`${this.api}/auth/signup`, data).pipe(
+      tap(res => {
+        localStorage.setItem('gradx_token', res.token);
+        localStorage.setItem('gradx_user', JSON.stringify(res.user));
+        this.userSubject.next(res.user);
+      })
+    );
+  }
+
+  logout() {
+    localStorage.removeItem('gradx_token');
+    localStorage.removeItem('gradx_user');
+    this.toastService.show('info', 'Logged out successfully.');
+    this.userSubject.next(null);
+  }
+
+  getToken(): string | null {
+    return localStorage.getItem('gradx_token');
+  }
+
+  getUser(): any {
+    return this.userSubject.value;
+  }
+
+  isLoggedIn(): boolean {
+    return !!this.getToken();
+  }
+
+  getMe() {
+    return this.http.get<any>(`${this.api}/auth/me`);
+  }
+}

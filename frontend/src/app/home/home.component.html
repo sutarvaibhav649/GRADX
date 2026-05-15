@@ -1,0 +1,86 @@
+<div class="landing-page">
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-logo">
+                <i class="fas fa-robot"></i>
+                <span>AI Evaluator</span>
+            </a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#about">About</a>
+                <a [routerLink]="['/auth', 'login']" class="btn-login">Login</a>
+                <a [routerLink]="['/auth', 'signup']" class="btn-signup">Sign Up</a>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>AI-Powered Question Paper Evaluation</h1>
+            <p>Revolutionizing academic assessment with artificial intelligence. Fast, accurate, and unbiased evaluation of answer sheets with detailed feedback and analytics.</p>
+            <div class="hero-buttons">
+                <a [routerLink]="['/auth', 'signup']" class="btn btn-primary">Get Started <i class="fas fa-arrow-right"></i></a>
+                <a href="#features" class="btn btn-secondary">Learn More <i class="fas fa-book-open"></i></a>
+            </div>
+        </div>
+        <div class="hero-image">
+            <div class="floating-card student">
+                <i class="fas fa-user-graduate"></i>
+                <h3>Student</h3>
+                <p>View your evaluated papers with detailed feedback</p>
+            </div>
+            <div class="floating-card faculty">
+                <i class="fas fa-chalkboard-teacher"></i>
+                <h3>Faculty</h3>
+                <p>Upload and manage papers with AI assistance</p>
+            </div>
+            <div class="floating-card admin">
+                <i class="fas fa-cogs"></i>
+                <h3>Admin</h3>
+                <p>Monitor system operations and analytics</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="features" class="features">
+        <h2>Powerful Features</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <i class="fas fa-bolt"></i>
+                <h3>Fast Evaluation</h3>
+                <p>Evaluate hundreds of papers in minutes with our advanced AI algorithms, reducing evaluation time by 90% compared to manual grading.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-chart-line"></i>
+                <h3>Detailed Analytics</h3>
+                <p>Get comprehensive performance insights, question-wise analysis, and detailed feedback to help students improve their performance.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-shield-alt"></i>
+                <h3>Secure & Private</h3>
+                <p>Your data is protected with enterprise-grade security measures, encryption, and compliance with educational data privacy standards.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2024 AI Question Paper Evaluator. All rights reserved.</p>
+    </footer>
+
+     <script>
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+        
+    </script>
+</div>

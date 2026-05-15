@@ -1,0 +1,72 @@
+<div class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <!-- Left Side - Welcome Content -->
+            <div class="auth-welcome">
+                <div class="auth-header">
+                    <i class="fas fa-robot"></i>
+                    <h1>Welcome Back</h1>
+                    <p>Sign in to your AI Evaluator account to access your personalized dashboard and continue your educational journey.</p>
+                </div>
+                <ul class="auth-features">
+                    <li><i class="fas fa-check-circle"></i> Instant paper evaluation</li>
+                    <li><i class="fas fa-check-circle"></i> Detailed performance analytics</li>
+                    <li><i class="fas fa-check-circle"></i> Secure and private</li>
+                    <li><i class="fas fa-check-circle"></i> Real-time progress tracking</li>
+                </ul>
+            </div>
+
+            <!-- Right Side - Login Form -->
+            <div class="auth-form-container">
+                <form class="auth-form" id="loginForm" [formGroup]="loginData" (submit)="submit()" >
+                    <div class="form-group">
+                        <label for="userType">I am a</label>
+                        <select formControlName="role" id="userType" name="userType" required>
+                            <option value="">Select Role</option>
+                            <option value="student">Student</option>
+                            <option value="faculty">Faculty</option>
+                            <option value="admin">Administrator</option>
+                        </select>
+                        <i class="fas fa-user input-icon"></i>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input formControlName="email" type="email" id="email" name="email" required placeholder="Enter your email">
+                        <i class="fas fa-envelope input-icon"></i>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input formControlName="password" type="password" id="password" name="password" required placeholder="Enter your password">
+                        <i class="fas fa-lock input-icon"></i>
+                    </div>
+
+                    <div class="form-options">
+                        <label class="checkbox">
+                            <input formControlName="rememberMe" type="checkbox" name="remember">
+                            <span class="checkmark"></span>
+                            Remember me
+                        </label>
+                        <a routerLink="/home" class="forgot-password">Forgot password?</a>
+                    </div>
+
+
+                    <button type="submit" class="btn btn-primary btn-auth" [style]="{ cursor: loginData.invalid ? 'not-allowed' : 'pointer' }" [disabled]="isLoading">
+                        @if (isLoading) {
+                            <span><i class="fas fa-spinner fa-spin"></i> Signing in...</span>
+                        } @else {
+                            <span class="btn-text">Sign In</span>
+                        }
+                    </button>
+                </form>
+
+                <div class="auth-footer">
+                    <p>Don't have an account? <a routerLink="/auth/signup">Sign up here</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- <script src="js/auth.js"></script> -->
+</div>

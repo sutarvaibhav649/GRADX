@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7
+    container_name: gradx-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: gradx
+    networks:
+      - gradx-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Node.js Backend
+  node-backend:
+    build: ./backend
+    container_name: gradx-node-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - uploads_data:/app/uploads
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGO_URI=mongodb://admin:password123@mongodb:27017/gradx?authSource=admin
+      - JWT_SECRET=${JWT_SECRET:-your_super_secret_jwt_key_change_this}
+      - JWT_EXPIRES_IN=7d
+      - CORS_ORIGIN=http://localhost:4200,http://localhost
+      - FASTAPI_URL=http://fastapi:8000
+      - UPLOAD_DIR=./uploads
+      - MAX_FILE_SIZE=10485760
+      - STUDENT_PAPER_PATH=/uploads/student-papers
+      - MODEL_PAPER_PATH=/uploads/model-answers
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - gradx-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # FastAPI Python Backend
+  fastapi:
+    build: ./backend-python
+    container_name: gradx-fastapi
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend-python:/app
+      - evaluations_data:/app/evaluations
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - PORT=8000
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    networks:
+      - gradx-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Angular Frontend
+  angular:
+    build: ./frontend
+    container_name: gradx-angular
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "4200:80"
+    depends_on:
+      node-backend:
+        condition: service_healthy
+      fastapi:
+        condition: service_healthy
+    networks:
+      - gradx-network
+
+networks:
+  gradx-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local
+  uploads_data:
+    driver: local
+  evaluations_data:
+    driver: local

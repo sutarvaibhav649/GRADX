@@ -1,0 +1,90 @@
+{
+  "evaluation_result": {
+    "total_marks": 3,
+    "max_marks": 7,
+    "percentage": 42.9,
+    "section_scores": {
+      "Definition": {
+        "marks_awarded": 1,
+        "max_marks": 2,
+        "percentage": 50.0,
+        "scores": {
+          "semantic_similarity": 0.619,
+          "coherence": 1.0,
+          "concept_coverage": 0.667,
+          "depth_score": 0.723
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.3,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Deep Learning is a type of Machine Learning with multiple",
+        "model_text": "Deep Learning is a subset of Machine Learning that uses neu"
+      },
+      "Body": {
+        "marks_awarded": 1,
+        "max_marks": 3,
+        "percentage": 33.3,
+        "scores": {
+          "semantic_similarity": 0.6,
+          "coherence": 0.8,
+          "concept_coverage": 0.0,
+          "depth_score": 0.639
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.0,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "It has input, hidden, and output layers. The network learns featu",
+        "model_text": "Deep Learning models, also known as deep neural networks, consist"
+      },
+      "Conclusion": {
+        "marks_awarded": 1,
+        "max_marks": 2,
+        "percentage": 50.0,
+        "scores": {
+          "semantic_similarity": 0.383,
+          "coherence": 1.0,
+          "concept_coverage": 0.2,
+          "depth_score": 0.527
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.143,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Used in image recognition and language processing.",
+        "model_text": "Deep Learning powers modern AI applications like image rec"
+      }
+    },
+    "feedback": {
+      "strengths": [
+        "\ud83d\udc4d Definition: Good understanding",
+        "\ud83d\udc4d Conclusion: Good understanding"
+      ],
+      "improvements": [
+        "\ud83d\udcda Body: Needs improvement",
+        "\ud83d\udd11 Body: Missing key concepts",
+        "\ud83d\udd11 Conclusion: Missing key concepts"
+      ],
+      "warnings": []
+    },
+    "config_used": "Extracted Model Answer"
+  },
+  "student_answer": {
+    "Definition": "Deep Learning is a type of Machine Learning with multiple",
+    "Body": "It has input, hidden, and output layers. The network learns featu",
+    "Conclusion": "Used in image recognition and language processing."
+  },
+  "model_answer": {
+    "Definition": "Deep Learning is a subset of Machine Learning that uses neu",
+    "Body": "Deep Learning models, also known as deep neural networks, consist",
+    "Conclusion": "Deep Learning powers modern AI applications like image rec"
+  },
+  "timestamp": "2026-05-15T18:49:35.277893"
+}

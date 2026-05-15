@@ -1,0 +1,469 @@
+<div class="dashboard">
+    <header class="dashboard-header">
+        <nav class="dashboard-nav">
+            <div class="nav-logo">
+                <i class="fas fa-robot"></i>
+                <span>AI Evaluator</span>
+            </div>
+            <div class="user-menu">
+                <div class="user-avatar">{{ userInitial }}</div>
+                <div>
+                    <div class="user-name">{{ userName }}</div>
+                    <div class="user-role">Faculty</div>
+                </div>
+                <button class="btn btn-outline btn-sm" (click)="logout()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <main class="dashboard-content">
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card faculty">
+                <div class="stat-icon"><i class="fas fa-upload"></i></div>
+                <div class="stat-info">
+                    <h3>{{ stats.papersUploaded }}</h3>
+                    <p>Papers Uploaded</p>
+                </div>
+            </div>
+            <div class="stat-card faculty">
+                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-info">
+                    <h3>{{ stats.aiEvaluated }}</h3>
+                    <p>AI Evaluated</p>
+                </div>
+            </div>
+            <div class="stat-card faculty">
+                <div class="stat-icon"><i class="fas fa-user-edit"></i></div>
+                <div class="stat-info">
+                    <h3>{{ stats.manuallyEvaluated }}</h3>
+                    <p>Manually Evaluated</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Form -->
+        <div class="content-card">
+            <div class="card-header">
+                <h2 class="card-title">Upload Answer Sheets & Model Answers</h2>
+            </div>
+            <div class="card-body">
+                <form [formGroup]="uploadForm" (ngSubmit)="submitEvaluation()">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="academicYear">Academic Year</label>
+                            <select id="academicYear" formControlName="academicYear" required>
+                                <option value="">Select Year</option>
+                                <option value="2025-26">2025-26</option>
+                                <option value="2024-25">2024-25</option>
+                                <option value="2023-24">2023-24</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="year">Year</label>
+                            <select id="year" formControlName="year" required>
+                                <option value="">Select Year</option>
+                                <option value="first">First Year</option>
+                                <option value="second">Second Year</option>
+                                <option value="third">Third Year</option>
+                                <option value="fourth">Fourth Year</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="department">Department</label>
+                            <select id="department" formControlName="department" required>
+                                <option value="">Select Department</option>
+                                <option value="cse">Computer Science & Engineering</option>
+                                <option value="aiml">Artificial Intelligence & Machine Learning</option>
+                                <option value="ds">Data Science</option>
+                                <option value="it">Information Technology</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="examType">Exam Type</label>
+                            <select id="examType" formControlName="examType" (change)="updateMaxMarks()" required>
+                                <option value="">Select Exam Type</option>
+                                <option value="mse">Mid Semester Exam (MSE)</option>
+                                <option value="ese">End Semester Exam (ESE)</option>
+                                <option value="makeup">Makeup Exam</option>
+                                <option value="quiz">Quiz</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="semester">Semester</label>
+                            <select id="semester" formControlName="semester" required>
+                                <option value="">Select Semester</option>
+                                <option value="odd">Odd Semester</option>
+                                <option value="even">Even Semester</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="maxMarks">Maximum Marks</label>
+                            <input type="number" id="maxMarks" formControlName="maxMarks" readonly>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="subject">Subject Name</label>
+                        <input type="text" id="subject" formControlName="subject" required placeholder="Enter subject name">
+                    </div>
+
+                    <!-- Student Papers Upload -->
+                    <div class="upload-area upload-area--compact">
+                        <div class="upload-area-header">
+                            <div>
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <h3>Upload Student Answer Sheets</h3>
+                                <p>Click Add to browse Image files, then enter each student email.</p>
+                            </div>
+                            <button type="button" class="upload-add-btn" (click)="studentPapersInput.click()">
+                                <span><i class="fas fa-plus"></i>Add</span>
+                            </button>
+                        </div>
+                        <input type="file" #studentPapersInput multiple accept="image/*" style="display: none;" (change)="onStudentPapersChange($event)">
+                        <div class="file-preview">
+                            @for (paper of selectedStudentPapers; track $index) {
+                                <div class="paper-row">
+                                    <span class="file-name">
+                                        <i class="fas fa-file-image"></i> {{ paper.file.name }}
+                                    </span>
+                                    <input type="email" class="paper-email" placeholder="Student email" 
+                                           [value]="paper.email" 
+                                           (input)="updateStudentPaperEmail($index, $any($event.target).value)"
+                                           required>
+                                    <button type="button" class="remove-paper-btn" (click)="removeStudentPaper($index)">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                        <small class="upload-hint">Enter the student email for each uploaded answer sheet.</small>
+                    </div>
+
+                    <!-- Model Answer Upload -->
+                    <div class="upload-area upload-area--compact" (click)="modelAnswerInput.click()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <h3>Upload Model Answer Key</h3>
+                        <p>Click to browse or drag & drop Image file</p>
+                        <input type="file" #modelAnswerInput accept="image/*" style="display: none;" (change)="onModelAnswerChange($event)">
+                        <div class="file-preview">
+                            @if (selectedModelAnswer) {
+                                <span style="display:block;font-size:0.85rem;color:#555;margin-top:4px;">
+                                    <i class="fas fa-file-image"></i> {{ selectedModelAnswer.name }}
+                                </span>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Evaluation Mode -->
+                    <div class="form-group">
+                        <label class="section-label">Evaluation Mode</label>
+                        <div class="evaluation-mode-selector">
+                            <div class="mode-option">
+                                <input type="radio" id="aiEvaluation" formControlName="evaluationMode" value="ai">
+                                <label for="aiEvaluation">
+                                    <i class="fas fa-robot"></i>
+                                    <div>
+                                        <h4>AI Evaluation</h4>
+                                        <p>Let our AI automatically evaluate papers using the model answer key</p>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="mode-option">
+                                <input type="radio" id="manualEvaluation" formControlName="evaluationMode" value="manual">
+                                <label for="manualEvaluation">
+                                    <i class="fas fa-user-edit"></i>
+                                    <div>
+                                        <h4>Manual Evaluation</h4>
+                                        <p>Evaluate papers manually using our evaluation interface</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Options (only shown for AI mode) -->
+                    @if (uploadForm.get('evaluationMode')?.value === 'ai') {
+                        <div class="ai-options">
+                            <div class="form-group">
+                                <label class="checkbox">
+                                    <input type="checkbox" formControlName="enableCrossCheck">
+                                    <span class="checkmark"></span>
+                                    Enable Cross-Checking after AI Evaluation
+                                </label>
+                                <small class="helper-text">Review and modify AI evaluations before final submission</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="evaluationStrictness">Evaluation Strictness</label>
+                                <select id="evaluationStrictness" formControlName="evaluationStrictness">
+                                    <option value="lenient">Lenient</option>
+                                    <option value="moderate">Moderate</option>
+                                    <option value="strict">Strict</option>
+                                </select>
+                                <small class="helper-text">Adjust how strictly the AI matches answers</small>
+                            </div>
+                        </div>
+                    }
+
+                    <div style="text-align: center; margin-top: 2rem;">
+                        <button type="submit" class="btn btn-primary btn-lg" [disabled]="isSubmitting">
+                            @if (isSubmitting) {
+                                <i class="fas fa-spinner fa-spin"></i> Processing...
+                            } @else {
+                                <i class="fas fa-play-circle"></i> Start Evaluation
+                            }
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Enhanced Evaluation Progress Modal -->
+        <div class="modal" [style.display]="showProgressModal ? 'flex' : 'none'">
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h3><i class="fas fa-microchip"></i> AI Evaluation in Progress</h3>
+                    <span class="close-modal" (click)="closeProgressModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <!-- Progress Bar -->
+                    <div class="progress-info">
+                        <div class="progress-bar-large">
+                            <div class="progress-fill" [style.width.%]="progressPercentage"></div>
+                        </div>
+                        <div class="progress-text">
+                            @if (progressPercentage < 100) {
+                                Evaluating... {{ progressPercentage }}% complete
+                            } @else {
+                                Evaluation complete! Finalizing results...
+                            }
+                        </div>
+                        
+                        <!-- Statistics -->
+                        <div class="progress-stats">
+                            <div class="stat">
+                                <span class="stat-value">{{ processedPapers }}</span>
+                                <span class="stat-label">Processed</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value">{{ totalPapers }}</span>
+                                <span class="stat-label">Total</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value">{{ successfulPapers }}</span>
+                                <span class="stat-label">Successful</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Evaluation Log -->
+                    <div class="evaluation-log">
+                        <h4><i class="fas fa-terminal"></i> Evaluation Log</h4>
+                        <div class="log-container">
+                            @for (log of evaluationLogs; track $index) {
+                                <div class="log-entry log-{{ log.type }}">
+                                    <i class="fas" [class.fa-check-circle]="log.type === 'success'" 
+                                                 [class.fa-exclamation-circle]="log.type === 'error'"
+                                                 [class.fa-info-circle]="log.type === 'info'"></i>
+                                    <span>{{ log.message }}</span>
+                                </div>
+                            }
+                            @if (evaluationLogs.length === 0) {
+                                <div class="log-entry log-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    <span>Initializing AI evaluation engine...</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline" (click)="closeProgressModal()" [disabled]="progressPercentage > 0 && progressPercentage < 100">
+                        Cancel Evaluation
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cross-Check Interface Modal -->
+        <div class="modal" [style.display]="showCrossCheckModal ? 'flex' : 'none'">
+            <div class="modal-content cross-check-modal">
+                <div class="modal-header">
+                    <h3><i class="fas fa-check-double"></i> Cross-Check AI Evaluation</h3>
+                    <span class="close-modal" (click)="closeCrossCheckModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <!-- Paper Navigation -->
+                    <div class="paper-navigation">
+                        <button class="btn btn-outline btn-sm" (click)="previousPaper()">
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+                        <div class="paper-counter">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Paper {{ currentPaperIndex + 1 }} of {{ currentPaperTotal }}</span>
+                        </div>
+                        <button class="btn btn-outline btn-sm" (click)="nextPaper()">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Main Evaluation Grid -->
+                    <div class="evaluation-grid">
+                        <!-- AI Evaluation Card -->
+                        <div class="eval-card ai-card">
+                            <div class="card-header">
+                                <div class="header-icon">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <h4>AI Evaluation</h4>
+                                <div class="badge badge-ai">Auto-generated</div>
+                            </div>
+                            <div class="score-section">
+                                <div class="score-circle">
+                                    <span class="score-value" id="aiScore">0</span>
+                                    <span class="score-max">/<span id="aiMaxMarks">100</span></span>
+                                </div>
+                                <div class="score-label">Total Score</div>
+                            </div>
+                            <div class="evaluation-details">
+                                <h5><i class="fas fa-list-check"></i> Section-wise Marks</h5>
+                                <div id="aiQuestionMarks" class="question-marks-list">
+                                    <div class="question-item">
+                                        <span class="question-name">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="feedback-section">
+                                <h5><i class="fas fa-comment-dots"></i> AI Feedback</h5>
+                                <div class="feedback-content"></div>
+                            </div>
+                        </div>
+
+                        <!-- Manual Adjustment Card -->
+                        <div class="eval-card manual-card">
+                            <div class="card-header">
+                                <div class="header-icon">
+                                    <i class="fas fa-user-edit"></i>
+                                </div>
+                                <h4>Manual Adjustment</h4>
+                                <div class="badge badge-manual">Review & Edit</div>
+                            </div>
+                            <div class="score-section">
+                                <div class="score-circle manual-score">
+                                    <input type="number" class="score-input" id="manualScore" min="0" max="100" value="0" step="0.5">
+                                    <span class="score-max">/<span id="manualMaxMarks">100</span></span>
+                                </div>
+                                <div class="score-label">Adjusted Score</div>
+                            </div>
+                            <div class="evaluation-details">
+                                <h5><i class="fas fa-sliders-h"></i> Adjust Marks</h5>
+                                <div id="manualQuestionMarks" class="question-marks-list editable">
+                                    <div class="question-item">
+                                        <span class="question-name">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Student Answer Preview -->
+                    <div class="student-preview-card">
+                        <div class="preview-header">
+                            <div class="header-icon">
+                                <i class="fas fa-user-graduate"></i>
+                            </div>
+                            <h4>Extracted Student Answer (OCR)</h4>
+                            <div class="badge badge-ocr">
+                                <i class="fas fa-magic"></i> AI Extracted
+                            </div>
+                        </div>
+                        <div id="extractedAnswerPreview" class="extracted-answer-content">
+                            <div class="loading-preview">
+                                <i class="fas fa-spinner fa-pulse"></i>
+                                <p>Loading student answer...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="modal-actions">
+                        <button class="btn btn-outline" (click)="skipPaper()">
+                            <i class="fas fa-forward"></i> Skip & Continue
+                        </button>
+                        <button class="btn btn-success" (click)="approveEvaluation()">
+                            <i class="fas fa-check-circle"></i> Approve & Continue
+                        </button>
+                        <button class="btn btn-primary" (click)="saveAndContinue()">
+                            <i class="fas fa-save"></i> Save Adjustments
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Uploads -->
+        <div class="content-card">
+            <div class="card-header">
+                <h2 class="card-title">Recent Uploads & Evaluations</h2>
+                <div class="card-actions">
+                    <button class="btn btn-outline btn-sm" (click)="loadDashboard()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <ul class="file-list">
+                    @for (exam of recentExams; track exam._id) {
+                        <li class="answer-card">
+                            <div class="answer-left">
+                                <div class="file-icon" style="background-color:rgb(240,112,52)">
+                                    <i class="fas fa-file-image"></i>
+                                </div>
+                                <div class="answer-info">
+                                    <h3 class="answer-title">{{ exam.subject }} — {{ exam.examType | uppercase }}</h3>
+                                    <p class="answer-marks">{{ exam.department | uppercase }} · {{ exam.status }}</p>
+                                </div>
+                            </div>
+                            <div class="answer-right">
+                                <button style="font-size:0.8rem;padding:7px 20px;border-radius:10px;border: 0px;cursor: pointer;"
+                                    [style.background]="exam.status === 'completed' ? '#d4edda' : '#fff3cd'"
+                                    [style.color]="exam.status === 'completed' ? '#155724' : '#856404'"
+                                    [style.display]="exam.status === 'completed' ? 'none' : 'inline'"
+                                    (click)="manualEvaluate()">
+                                    Evaluate
+                                </button>
+                                <button style="font-size:0.8rem;padding:7px 20px;border-radius:10px;border: 0px;cursor: pointer;"
+                                    [style.background]="exam.status === 'completed' ? '#d4edda' : '#fff3cd'"
+                                    [style.color]="exam.status === 'completed' ? '#155724' : '#856404'"
+                                    [style.display]="exam.status === 'completed' ? 'inline' : 'none'"
+                                    (click)="viewResults()">
+                                    View Results
+                                </button>
+                                <button style="font-size:0.8rem;padding:7px 20px;border-radius:10px;border: 0px;cursor: pointer;"
+                                    [style.background]="exam.status === 'completed' ? '#d4edda' : '#fff3cd'"
+                                    [style.color]="exam.status === 'completed' ? '#155724' : '#856404'"
+                                    [style.display]="exam.status === 'completed' ? 'inline' : 'none'"
+                                    (click)="finalizeEvaluation(exam._id)">
+                                    Finalize
+                                </button>
+                                <span style="font-size:0.8rem;padding:4px 10px;border-radius:20px;"
+                                    [style.background]="exam.status === 'completed' ? '#d4edda' : '#fff3cd'"
+                                    [style.color]="exam.status === 'completed' ? '#155724' : '#856404'">
+                                    {{ exam.status }}
+                                </span>
+                            </div>
+                        </li>
+                    }
+                    @empty {
+                        <li style="padding:2rem;text-align:center;color:#888;">No exams uploaded yet.</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </main>
+</div>

@@ -1,0 +1,88 @@
+{
+  "evaluation_result": {
+    "total_marks": 1,
+    "max_marks": 7,
+    "percentage": 14.3,
+    "section_scores": {
+      "Definition": {
+        "marks_awarded": 0,
+        "max_marks": 2,
+        "percentage": 0.0,
+        "scores": {
+          "semantic_similarity": 0.086,
+          "coherence": 1.0,
+          "concept_coverage": 0.0,
+          "depth_score": 0.36
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.0,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Introduction:-\n- Open-Source, cross platform, JS runtime environment\n- Built on Google chrome's V8 Engine\n- Allows JS to run outside the browser\n- Used to server-side programming\n- Event driven, non blocking I/O model -> highly scalable\n- single threaded",
+        "model_text": "Artificial Intelligence is a branch of computer science that focuses on building systems capable of performing tasks that normally require human intelligence."
+      },
+      "Body": {
+        "marks_awarded": 1,
+        "max_marks": 3,
+        "percentage": 33.3,
+        "scores": {
+          "semantic_similarity": 0.14,
+          "coherence": 1.0,
+          "concept_coverage": 0.0,
+          "depth_score": 0.461
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.0,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Features:-\n- Fast execution\n- Asynchronous (no waiting)\n- Cross platform\n- Large package ecosystem -> NPM\n- Best for real time apps\nArchitecture:-\n> Node.js uses Single-Threaded Event Loop Architecture.\n> It can handle many client requests at the same time.\n> Node.js uses asynchronous I/O and callbacks.\nKey components ->\n1) V8 Engine\n   - Google's JS engine\n   - Converts JS -> Machine code\n   - Provides high speed execution\n2) libuv\n   - Library for handling async operations\n   - Provides event loop + thread pool\n   - Handles I/O tasks like file system, DNS, network",
+        "model_text": "Artificial Intelligence enables machines to learn from data and improve performance using techniques such as machine learning and deep learning. AI systems can be categorized into narrow AI, which performs specific tasks, and general AI, which aims to perform intellectual tasks similar to humans."
+      },
+      "Conclusion": {
+        "marks_awarded": 0,
+        "max_marks": 2,
+        "percentage": 0.0,
+        "scores": {
+          "semantic_similarity": 0.0,
+          "coherence": 0.0,
+          "concept_coverage": 0.0,
+          "depth_score": 0.0
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.0
+        },
+        "student_text": "",
+        "model_text": "Artificial Intelligence is widely used in fields such as healthcare, education, transportation, business, and entertainment."
+      }
+    },
+    "feedback": {
+      "strengths": [],
+      "improvements": [
+        "\ud83d\udcda Definition: Needs improvement",
+        "\ud83d\udd11 Definition: Missing key concepts",
+        "\ud83d\udcda Body: Needs improvement",
+        "\ud83d\udd11 Body: Missing key concepts",
+        "\ud83d\udcda Conclusion: Needs improvement",
+        "\ud83d\udd11 Conclusion: Missing key concepts"
+      ],
+      "warnings": []
+    },
+    "config_used": "Extracted Model Answer"
+  },
+  "student_answer": {
+    "Definition": "Introduction:-\n- Open-Source, cross platform, JS runtime environment\n- Built on Google chrome's V8 Engine\n- Allows JS to run outside the browser\n- Used to server-side programming\n- Event driven, non blocking I/O model -> highly scalable\n- single threaded",
+    "Body": "Features:-\n- Fast execution\n- Asynchronous (no waiting)\n- Cross platform\n- Large package ecosystem -> NPM\n- Best for real time apps\nArchitecture:-\n> Node.js uses Single-Threaded Event Loop Architecture.\n> It can handle many client requests at the same time.\n> Node.js uses asynchronous I/O and callbacks.\nKey components ->\n1) V8 Engine\n   - Google's JS engine\n   - Converts JS -> Machine code\n   - Provides high speed execution\n2) libuv\n   - Library for handling async operations\n   - Provides event loop + thread pool\n   - Handles I/O tasks like file system, DNS, network",
+    "Conclusion": ""
+  },
+  "model_answer": {
+    "Definition": "Artificial Intelligence is a branch of computer science that focuses on building systems capable of performing tasks that normally require human intelligence.",
+    "Body": "Artificial Intelligence enables machines to learn from data and improve performance using techniques such as machine learning and deep learning. AI systems can be categorized into narrow AI, which performs specific tasks, and general AI, which aims to perform intellectual tasks similar to humans.",
+    "Conclusion": "Artificial Intelligence is widely used in fields such as healthcare, education, transportation, business, and entertainment."
+  },
+  "timestamp": "2026-05-15T22:39:48.000830"
+}

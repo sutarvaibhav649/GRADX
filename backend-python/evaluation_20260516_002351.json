@@ -1,0 +1,87 @@
+{
+  "evaluation_result": {
+    "total_marks": 6,
+    "max_marks": 7,
+    "percentage": 85.7,
+    "section_scores": {
+      "Definition": {
+        "marks_awarded": 2,
+        "max_marks": 2,
+        "percentage": 100.0,
+        "scores": {
+          "semantic_similarity": 0.938,
+          "coherence": 1.0,
+          "concept_coverage": 0.75,
+          "depth_score": 0.971
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.194,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Artificial Intelligence (AI) is a branch of computer science that focuses on creating machines and software capable of performing tasks that normally require human intelligence. These tasks include thinking, learning, problem-solving, reasoning, decision-making, understanding language and recognizing patterns.",
+        "model_text": "Artificial Intelligence is a branch of computer science that focuses on building systems capable of performing tasks that normally require human intelligence."
+      },
+      "Body": {
+        "marks_awarded": 2,
+        "max_marks": 3,
+        "percentage": 66.7,
+        "scores": {
+          "semantic_similarity": 0.82,
+          "coherence": 1.0,
+          "concept_coverage": 0.75,
+          "depth_score": 0.786
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.09,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "The core idea of Artificial Intelligence lies in enabling machines to learn from experience and improve their performances over time. AI uses techniques such as machine learning, where systems analyze large amounts of data to identify patterns and make predictions, and deep learning, which mimics the functioning of the human brain through neural networks. AI can be categorized into narrow AI, which is designed to perform specific tasks like voice recognition or recommendation systems, and general AI, which aims to perform any intellectual task that a human can do.",
+        "model_text": "Artificial Intelligence enables machines to learn from data and improve performance using techniques such as machine learning and deep learning. Al systems can be categorized into narrow Al, which performs specific tasks, and general Al, which aims to perform intellectual tasks similar to humans."
+      },
+      "Conclusion": {
+        "marks_awarded": 2,
+        "max_marks": 2,
+        "percentage": 100.0,
+        "scores": {
+          "semantic_similarity": 0.895,
+          "coherence": 1.0,
+          "concept_coverage": 0.75,
+          "depth_score": 0.884
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.176,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "In conclusion, Artificial Intelligence has a significant impact on various fields such as healthcare, education, transportation, business and entertainment. It is used in medical diagnosis, virtual assistants, self-driving cars, fraud detection and personalized learning systems.",
+        "model_text": "Artificial Intelligence is widely used in fields such as healthcare, education, transportation, business, and entertainment."
+      }
+    },
+    "feedback": {
+      "strengths": [
+        "\u2705 Definition: Excellent understanding",
+        "\ud83d\udc4d Body: Good understanding",
+        "\u2705 Conclusion: Excellent understanding"
+      ],
+      "improvements": [],
+      "warnings": []
+    },
+    "config_used": "Extracted Model Answer"
+  },
+  "student_answer": {
+    "Definition": "Artificial Intelligence (AI) is a branch of computer science that focuses on creating machines and software capable of performing tasks that normally require human intelligence. These tasks include thinking, learning, problem-solving, reasoning, decision-making, understanding language and recognizing patterns.",
+    "Body": "The core idea of Artificial Intelligence lies in enabling machines to learn from experience and improve their performances over time. AI uses techniques such as machine learning, where systems analyze large amounts of data to identify patterns and make predictions, and deep learning, which mimics the functioning of the human brain through neural networks. AI can be categorized into narrow AI, which is designed to perform specific tasks like voice recognition or recommendation systems, and general AI, which aims to perform any intellectual task that a human can do.",
+    "Conclusion": "In conclusion, Artificial Intelligence has a significant impact on various fields such as healthcare, education, transportation, business and entertainment. It is used in medical diagnosis, virtual assistants, self-driving cars, fraud detection and personalized learning systems."
+  },
+  "model_answer": {
+    "Definition": "Artificial Intelligence is a branch of computer science that focuses on building systems capable of performing tasks that normally require human intelligence.",
+    "Body": "Artificial Intelligence enables machines to learn from data and improve performance using techniques such as machine learning and deep learning. Al systems can be categorized into narrow Al, which performs specific tasks, and general Al, which aims to perform intellectual tasks similar to humans.",
+    "Conclusion": "Artificial Intelligence is widely used in fields such as healthcare, education, transportation, business, and entertainment."
+  },
+  "timestamp": "2026-05-16T00:23:51.832878"
+}
