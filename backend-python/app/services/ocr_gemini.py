@@ -27,70 +27,66 @@ YOUR_SITE_NAME = os.getenv("YOUR_SITE_NAME", "AI Evaluator")
 
 print(f"✅ OCR initialized with model: {MODEL_NAME} via OpenRouter")
 
-PROMPT = """
-You are an OCR system for evaluating student answers.
+DEFAULT_SECTIONS = ["Definition", "Body", "Conclusion"]
 
-Extract ONLY Definition, Body, and Conclusion from the handwritten answer.
+
+def make_extraction_prompt(section_names: list) -> str:
+    import json as _json
+    empty_answer = {name: "" for name in section_names}
+    template = _json.dumps({"question_No": "1", "Answer": empty_answer}, indent=2)
+    section_list = ", ".join(f'"{s}"' for s in section_names)
+    return f"""You are an OCR system for evaluating student handwritten answers.
+
+Extract the content for each of these sections from the handwritten answer: {section_list}
 
 STRICT RULES:
-- Output ONLY valid JSON
-- Do NOT add explanations
-- Do NOT wrap in markdown
-- Do NOT add extra text
-- Missing fields must be empty string ""
-- Preserve the student's exact wording as much as possible
+- Output ONLY valid JSON — no markdown, no explanations, nothing else
+- Look for section headings/labels in the handwriting; if present, extract text under each heading
+- If no clear headings exist, split the answer into {len(section_names)} sequential part(s) in order
+- Missing or illegible sections must be empty string ""
+- Preserve the student's exact wording as closely as possible
 
-JSON FORMAT:
-{
-  "question_No": "1",
-  "Answer": {
-    "Definition": "",
-    "Body": "",
-    "Conclusion": ""
-  }
-}
-
-Return ONLY the JSON.
-"""
+Return ONLY this JSON:
+{template}"""
 
 def encode_image_to_base64(image_path: str) -> str:
     """Convert image to base64 for API call"""
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-def extract_student_json(image_path: str) -> dict:
+def extract_student_json(image_path: str, section_names: list = None) -> dict:
     """
-    Extract student answer from image using OpenRouter API
-    
+    Extract student answer sections from a handwritten image via OpenRouter.
+
     Args:
-        image_path: Path to the image file
-        
+        image_path:    Path to the image file
+        section_names: Sections to extract (default: Definition/Body/Conclusion)
+
     Returns:
-        Dictionary with question_No and Answer fields
+        Dict with question_No and Answer keys
     """
+    if not section_names:
+        section_names = DEFAULT_SECTIONS
+
+    prompt = make_extraction_prompt(section_names)
+
     try:
         print(f"📸 Processing image: {image_path}")
-        
-        # Open and verify image
         image = Image.open(image_path)
         print(f"   Image size: {image.size}, Mode: {image.mode}")
-        
-        # Encode image to base64
+
         base64_image = encode_image_to_base64(image_path)
-        
-        # Call OpenRouter with image
+
         response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": PROMPT},
+                        {"type": "text", "text": prompt},
                         {
                             "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
-                            }
+                            "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
                         }
                     ]
                 }
@@ -99,61 +95,43 @@ def extract_student_json(image_path: str) -> dict:
                 "HTTP-Referer": YOUR_SITE_URL,
                 "X-Title": YOUR_SITE_NAME,
             },
-            max_tokens=4096,
+            max_tokens=1024,
             temperature=0.1,
         )
-        
-        # Extract response text
+
         text = response.choices[0].message.content.strip()
-        
         print(f"📝 OpenRouter response length: {len(text)} characters")
-        
-        # Extract JSON from response
+
         match = re.search(r"\{.*\}", text, re.DOTALL)
         if not match:
             print("⚠️ No JSON found in response")
-            return {
-                "question_No": "1",
-                "Answer": {
-                    "Definition": text[:500] if text else "",
-                    "Body": "",
-                    "Conclusion": ""
-                }
-            }
-        
+            fallback = {s: "" for s in section_names}
+            fallback[section_names[0]] = text[:500] if text else ""
+            return {"question_No": "1", "Answer": fallback}
+
         json_str = match.group(0)
-        
-        # Parse JSON
         try:
             result = json.loads(json_str)
-            
-            # Ensure all fields exist
             if "Answer" not in result:
                 result["Answer"] = {}
-            
-            for section in ["Definition", "Body", "Conclusion"]:
+            for section in section_names:
                 if section not in result["Answer"]:
                     result["Answer"][section] = ""
                 elif result["Answer"][section] == " ":
                     result["Answer"][section] = ""
-            
-            print(f"✅ Extracted: Definition={len(result['Answer']['Definition'])} chars, "
-                  f"Body={len(result['Answer']['Body'])} chars, "
-                  f"Conclusion={len(result['Answer']['Conclusion'])} chars")
-            
+
+            summary = ", ".join(
+                f"{s}={len(result['Answer'].get(s, ''))} chars" for s in section_names
+            )
+            print(f"✅ Extracted: {summary}")
             return result
-            
+
         except json.JSONDecodeError as e:
             print(f"❌ JSON parse error: {e}")
-            return {
-                "question_No": "1",
-                "Answer": {
-                    "Definition": json_str[:500],
-                    "Body": "",
-                    "Conclusion": ""
-                }
-            }
-            
+            fallback = {s: "" for s in section_names}
+            fallback[section_names[0]] = json_str[:500]
+            return {"question_No": "1", "Answer": fallback}
+
     except Exception as e:
         print(f"❌ OCR Error: {e}")
         raise ValueError(f"Failed to extract text from image: {e}")

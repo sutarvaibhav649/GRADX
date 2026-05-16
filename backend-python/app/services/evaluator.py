@@ -46,17 +46,17 @@ class AdvancedEvaluator:
         except LookupError:
             self.stop_words = set()
     
-    def auto_configure_from_model(self, model_answer: Dict, question_type: str = "conceptual", 
+    def auto_configure_from_model(self, model_answer: Dict, question_type: str = "conceptual",
                                    cheating_threshold: float = 0.4):
         """Automatically configure evaluator from model answer"""
-        topic = model_answer.get("topic", "Deep Learning")
-        
+        topic = model_answer.get("topic", "Extracted Model Answer")
+
         key_concepts = {}
         required_terms = set()
-        
-        for section in ["Definition", "Body", "Conclusion"]:
-            text = model_answer.get("Answer", {}).get(section, "")
-            if text:
+
+        answer_dict = model_answer.get("Answer", {})
+        for section, text in answer_dict.items():
+            if text and isinstance(text, str):
                 words = text.lower().split()
                 important = [w for w in words if len(w) > 4 and w not in self.stop_words]
                 key_concepts[section] = list(dict.fromkeys(important))[:8]
@@ -184,13 +184,14 @@ class AdvancedEvaluator:
         if cheating['is_suspicious'] and cheating['keyword_density'] > 0.6:
             final_raw *= 0.8
         
-        marks = round(final_raw * max_marks)
-        marks = max(0, min(marks, max_marks))
-        
+        safe_max = float(max_marks) if max_marks and max_marks > 0 else 1.0
+        marks = round(final_raw * safe_max, 1)
+        marks = max(0.0, min(marks, safe_max))
+
         return {
-            'marks_awarded': int(marks),
-            'max_marks': int(max_marks),
-            'percentage': float(round((marks / max_marks) * 100, 1)) if max_marks > 0 else 0.0,
+            'marks_awarded': round(marks, 1),
+            'max_marks': round(safe_max, 1),
+            'percentage': float(round((marks / safe_max) * 100, 1)),
             'scores': {
                 'semantic_similarity': float(round(semantic_sim, 3)),
                 'coherence': float(round(coherence, 3)),
@@ -212,19 +213,21 @@ class AdvancedEvaluator:
         results = {}
         total_marks = 0
         max_total = 0
-        
-        for section in ["Definition", "Body", "Conclusion"]:
-            if section in student_answer and section in model_answer:
-                max_marks = marks_per_section.get(section, 2)
-                result = self.evaluate_section(
-                    section,
-                    student_answer[section],
-                    model_answer[section],
-                    max_marks
-                )
-                results[section] = result
-                total_marks += result['marks_awarded']
-                max_total += max_marks
+
+        # Iterate over whatever sections are defined (supports any custom sections)
+        for section, raw_max in marks_per_section.items():
+            max_marks = float(raw_max) if raw_max and float(raw_max) > 0 else 0.0
+            if max_marks <= 0:
+                continue  # skip zero-mark sections to avoid division-by-zero
+            result = self.evaluate_section(
+                section,
+                student_answer.get(section, ""),
+                model_answer.get(section, ""),
+                max_marks
+            )
+            results[section] = result
+            total_marks += result['marks_awarded']
+            max_total += max_marks
         
         overall_percentage = round((total_marks / max_total) * 100, 1) if max_total > 0 else 0.0
         
@@ -247,7 +250,8 @@ class AdvancedEvaluator:
         feedback = {'strengths': [], 'improvements': [], 'warnings': []}
         
         for section, data in results.items():
-            marks_pct = (data['marks_awarded'] / data['max_marks']) * 100
+            max_m = data.get('max_marks') or 1
+            marks_pct = (data['marks_awarded'] / max_m) * 100
             
             if marks_pct >= 75:
                 feedback['strengths'].append(f"✅ {section}: Excellent understanding")

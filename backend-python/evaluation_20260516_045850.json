@@ -1,0 +1,29 @@
+{
+  "evaluation_result": {
+    "total_marks": 0,
+    "max_marks": 0,
+    "percentage": 0.0,
+    "section_scores": {},
+    "feedback": {
+      "strengths": [],
+      "improvements": [],
+      "warnings": []
+    },
+    "config_used": "Extracted Model Answer"
+  },
+  "student_answer": {
+    "Given": "Equations: 2x + y = 7 and x - y = 2",
+    "Step1": "Add both equations:\n2x + y + x - y = 7 + 2\n3x = 9 so x = 3",
+    "step2": "Putting x = 3 in x - y = 2:\n3 - y = 2\ny = 1",
+    "step3": "Checking in equation 1: 2(3) + 1 = 7 correct.\n(Did not check equation 2 separately)",
+    "conclusion": "Therefore x = 3 and y = 1."
+  },
+  "model_answer": {
+    "Given": "Two simultaneous linear equations:\n2x + y = 7 ... (1)\nx - y = 2 (2)\nWe need to find the values of x and y.",
+    "Step1": "Add equation (1) and equation (2) to eliminate y:\n(2x + y) + (x - y) = 7 + 2\n3x = 9\nx = 3",
+    "step2": "Substitute x = 3 into equation (2):\n3 - y = 2\ny = 3 - 2\ny = 1",
+    "step3": "Verification \u2014 substitute x = 3, y = 1 in both equations:\nEq (1): 2(3) + 1 = 6 + 1 = 7 [correct]\nEq (2): 3 - 1 = 2 [correct]\nBoth equations are satisfied, so the solution is correct.",
+    "conclusion": "The solution of the system of equations is:\nx = 3 and y = 1"
+  },
+  "timestamp": "2026-05-16T04:58:50.226796"
+}

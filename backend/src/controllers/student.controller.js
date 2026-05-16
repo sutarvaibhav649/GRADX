@@ -80,7 +80,37 @@ const getResultById = async (req, res) => {
 
     if (!result) return res.status(404).json({ success: false, message: 'Result not found' });
 
-    res.status(200).json({ success: true, data: result });
+    // Class stats: avg, rank, total students evaluated in the same exam
+    const classResults = await EvaluationResult.find({
+      examId: result.examId._id,
+      evaluationStatus: { $ne: 'pending' },
+    }).select('finalScore percentage studentId');
+
+    const classAvg =
+      classResults.length > 0
+        ? parseFloat(
+            (classResults.reduce((s, r) => s + r.percentage, 0) / classResults.length).toFixed(2)
+          )
+        : 0;
+
+    const rank =
+      classResults.filter(
+        (r) =>
+          r.percentage > result.percentage &&
+          r.studentId.toString() !== req.user._id.toString()
+      ).length + 1;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...result.toObject(),
+        classStats: {
+          totalStudents: classResults.length,
+          classAverage: classAvg,
+          rank,
+        },
+      },
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

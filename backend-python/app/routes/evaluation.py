@@ -1,41 +1,74 @@
 # routes/evaluation.py
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-from fastapi import APIRouter, UploadFile, File, HTTPException, Body, Query
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Body, Query
 import tempfile
 import os
 import json
 
-from app.services.ocr_gemini import extract_student_json
+from app.services.ocr_gemini import extract_student_json, DEFAULT_SECTIONS
 from app.models.model_answer import MODEL_ANSWERS
 from app.services.evaluator import advanced_evaluator
 
 router = APIRouter(prefix="/api/evaluation", tags=["evaluation"])
 
-# Marks per section (total = 7)
-MARKS_CONFIG = {
+# Default marks config (used when no custom questions are defined)
+DEFAULT_MARKS_CONFIG = {
     "Definition": 2,
     "Body": 3,
     "Conclusion": 2
 }
 
 # Per-exam model answers: { exam_id: { question_No, topic, Answer } }
-# "default" key used when no exam_id is supplied (backward compat)
 MODEL_ANSWERS_STORE: Dict[str, Any] = {}
+
+# Per-exam sections config: { exam_id: [{"name": "...", "marks": N}, ...] }
+# Empty list means use default Definition/Body/Conclusion
+EXAM_SECTIONS_STORE: Dict[str, List[Dict]] = {}
+
+
+def get_sections_for_exam(exam_id: str) -> List[Dict]:
+    """Return sections config for exam, falling back to defaults."""
+    return EXAM_SECTIONS_STORE.get(exam_id) or [
+        {"name": "Definition", "marks": 2},
+        {"name": "Body", "marks": 3},
+        {"name": "Conclusion", "marks": 2},
+    ]
+
+
+def sections_to_marks_config(sections: List[Dict]) -> Dict[str, int]:
+    return {s["name"]: s["marks"] for s in sections}
 
 # ==================== UPLOAD MODEL ANSWER FROM IMAGE ====================
 @router.post("/upload-model")
 async def upload_model_answer(
     file: UploadFile = File(...),
-    exam_id: str = Query(default="default", description="Exam ID to scope this model answer")
+    exam_id: str = Query(default="default", description="Exam ID to scope this model answer"),
+    sections: str = Form(default="", description='JSON array: [{"name":"...","marks":N},...]')
 ):
     """
     Upload a handwritten model answer image.
-    Pass ?exam_id=<mongoId> so the model answer is stored per-exam, preventing
-    concurrent faculty sessions from overwriting each other.
+    Optionally pass sections as a JSON form field to define custom question sections.
     """
     tmp_path = None
     try:
+        # Parse sections config (fall back to defaults if empty/invalid)
+        sections_config = []
+        if sections:
+            try:
+                sections_config = json.loads(sections)
+            except Exception:
+                sections_config = []
+
+        if sections_config:
+            EXAM_SECTIONS_STORE[exam_id] = sections_config
+            print(f"Custom sections for exam {exam_id}: {[s['name'] for s in sections_config]}")
+        else:
+            # Remove any stale override so defaults apply
+            EXAM_SECTIONS_STORE.pop(exam_id, None)
+
+        section_names = [s["name"] for s in get_sections_for_exam(exam_id)]
+
         suffix = os.path.splitext(file.filename or ".jpg")[1] or ".jpg"
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
             content = await file.read()
@@ -45,7 +78,7 @@ async def upload_model_answer(
 
         print(f"Model answer image saved temporarily: {tmp_path} (exam_id={exam_id})")
 
-        model_data = extract_student_json(tmp_path)
+        model_data = extract_student_json(tmp_path, section_names)
 
         model_entry = {
             "question_No": "1",
@@ -53,25 +86,23 @@ async def upload_model_answer(
             "Answer": model_data["Answer"]
         }
 
-        # Store per-exam so concurrent sessions don't overwrite each other
         MODEL_ANSWERS_STORE[exam_id] = model_entry
 
-        # Configure the evaluator with this exam's model answer
         advanced_evaluator.auto_configure_from_model(
             model_answer=model_entry,
             question_type="conceptual",
             cheating_threshold=0.4
         )
 
-        print(f"Model answer stored for exam {exam_id}:")
-        print(f"  Definition: {model_data['Answer']['Definition'][:80]}")
-        print(f"  Body: {model_data['Answer']['Body'][:80]}")
-        print(f"  Conclusion: {model_data['Answer']['Conclusion'][:80]}")
+        for name in section_names:
+            val = model_data['Answer'].get(name, '')
+            print(f"  {name}: {val[:80]}")
 
         return {
             "success": True,
             "message": "Model answer uploaded and configured successfully",
             "exam_id": exam_id,
+            "sections_used": section_names,
             "model_extracted": model_data,
             "config": advanced_evaluator.current_config
         }
@@ -85,6 +116,54 @@ async def upload_model_answer(
                 os.unlink(tmp_path)
             except Exception:
                 pass
+
+# ==================== RESTORE MODEL ANSWER FROM JSON ====================
+@router.post("/restore-model")
+async def restore_model_answer_from_json(
+    payload: Dict[str, Any] = Body(...),
+    exam_id: str = Query(default="default", description="Exam ID")
+):
+    """
+    Restore model answer + sections config from MongoDB JSON.
+    Accepts two formats:
+      - {"answer": {...}, "sections": [...]}  (new, with sections)
+      - {"Definition": "...", ...}            (legacy, answer only)
+    """
+    try:
+        if "answer" in payload:
+            answer = payload["answer"]
+            sections = payload.get("sections", [])
+        else:
+            answer = payload
+            sections = []
+
+        if sections:
+            EXAM_SECTIONS_STORE[exam_id] = sections
+            print(f"Sections restored for exam {exam_id}: {[s['name'] for s in sections]}")
+
+        model_entry = {
+            "question_No": "1",
+            "topic": "Restored Model Answer",
+            "Answer": answer
+        }
+        MODEL_ANSWERS_STORE[exam_id] = model_entry
+
+        advanced_evaluator.auto_configure_from_model(
+            model_answer=model_entry,
+            question_type="conceptual",
+            cheating_threshold=0.4
+        )
+
+        print(f"Model answer restored for exam {exam_id} from MongoDB JSON")
+
+        return {
+            "success": True,
+            "message": "Model answer restored successfully",
+            "exam_id": exam_id
+        }
+    except Exception as e:
+        print(f"Error restoring model answer: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ==================== GET CURRENT MODEL ANSWER ====================
 @router.get("/model")
@@ -125,14 +204,18 @@ async def evaluate_text_answer(
         if not student_answer:
             raise HTTPException(status_code=400, detail="student_answer is required")
 
-        for section in ["Definition", "Body", "Conclusion"]:
+        sections_config = get_sections_for_exam(exam_id)
+        section_names = [s["name"] for s in sections_config]
+        marks_config = sections_to_marks_config(sections_config)
+
+        for section in section_names:
             if section not in student_answer:
                 student_answer[section] = ""
 
         # Reconfigure evaluator with this exam's model (safe for sequential requests)
         advanced_evaluator.auto_configure_from_model(model_answer, question_type="conceptual", cheating_threshold=0.4)
 
-        result = advanced_evaluator.evaluate(student_answer, model_answer["Answer"], MARKS_CONFIG)
+        result = advanced_evaluator.evaluate(student_answer, model_answer["Answer"], marks_config)
 
         json_file = advanced_evaluator.save_to_json_file(student_answer, model_answer["Answer"], result)
 
@@ -176,17 +259,33 @@ async def evaluate_image_answer(
 
         print(f"Student image saved temporarily: {tmp_path} (exam_id={exam_id})")
 
-        student_data = extract_student_json(tmp_path)
+        # Use per-exam sections for OCR extraction and scoring
+        sections_config = get_sections_for_exam(exam_id)
+        section_names = [s["name"] for s in sections_config]
+        marks_config = sections_to_marks_config(sections_config)
+
+        student_data = extract_student_json(tmp_path, section_names)
 
         print(f"Extracted student answer (exam {exam_id}):")
-        print(f"  Definition: {student_data['Answer']['Definition'][:80]}")
-        print(f"  Body: {student_data['Answer']['Body'][:80]}")
-        print(f"  Conclusion: {student_data['Answer']['Conclusion'][:80]}")
+        for name in section_names:
+            print(f"  {name}: {student_data['Answer'].get(name, '')[:80]}")
+
+        # Phase 3.4: OCR confidence — flag papers where extracted text is suspiciously short
+        total_text_len = sum(
+            len(v) for v in student_data["Answer"].values() if isinstance(v, str)
+        )
+        low_confidence = total_text_len < 80
+        confidence_note = (
+            "Low OCR confidence — handwriting may be unclear or image quality is poor"
+            if low_confidence else None
+        )
+        if low_confidence:
+            print(f"  WARNING: Low OCR confidence (total chars: {total_text_len})")
 
         # Reconfigure evaluator with this exam's model before scoring
         advanced_evaluator.auto_configure_from_model(model_answer, question_type="conceptual", cheating_threshold=0.4)
 
-        result = advanced_evaluator.evaluate(student_data["Answer"], model_answer["Answer"], MARKS_CONFIG)
+        result = advanced_evaluator.evaluate(student_data["Answer"], model_answer["Answer"], marks_config)
 
         json_file = advanced_evaluator.save_to_json_file(student_data["Answer"], model_answer["Answer"], result)
 
@@ -194,6 +293,8 @@ async def evaluate_image_answer(
             "success": True,
             "exam_id": exam_id,
             "student_extracted": student_data,
+            "low_confidence": low_confidence,
+            "confidence_note": confidence_note,
             "evaluation": result,
             "saved_to_json": json_file
         }

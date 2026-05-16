@@ -1,0 +1,155 @@
+{
+  "evaluation_result": {
+    "total_marks": 4,
+    "max_marks": 7,
+    "percentage": 68.6,
+    "section_scores": {
+      "Introduction": {
+        "marks_awarded": 0.8,
+        "max_marks": 1.0,
+        "percentage": 80.0,
+        "scores": {
+          "semantic_similarity": 0.932,
+          "coherence": 1.0,
+          "concept_coverage": 0.5,
+          "depth_score": 0.753
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.357,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "An animal cell is the basic unit of life in animals. It is eukaryotic, meaning\nit has a nucleus. It does not have a cell wall like plant cells.",
+        "model_text": "An animal cell is the basic structural and functional unit of all animal organisms.\nIt is a eukaryotic cell it has a membrane-bound nucleus and membrane-bound organelles.\nAnimal cells lack a cell wall, chloroplasts, and a large central vacuole."
+      },
+      "Diagram": {
+        "marks_awarded": 1.3,
+        "max_marks": 2.0,
+        "percentage": 65.0,
+        "scores": {
+          "semantic_similarity": 0.742,
+          "coherence": 1.0,
+          "concept_coverage": 0.375,
+          "depth_score": 0.645
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.25,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "+-\n[Cell Membrane]+\n-+\n| Nucleus\n[Mitochondrial\nLabels: Cell Membrane, Nucleus, Mitochondria.\n(Note: ER, Golgi Body, Ribosome, Centriole not labeled)",
+        "model_text": "Labeled diagram of an Animal Cell:\nCentriole\nCell Membrane\nV\nV\n[~Cell Membrane~]\n-+\n[Cen] |\n[Ribosome]\n|\n[ER] |\nNucleus\n[Nucleolus|\n| inside]\n[Golgi Body]\n[Mitochon] |\n~]\n----+\nEndoplasmic\nGolgi Body\nMitochondria\nReticulum (ER)\nLabels: Cell Membrane, Nucleus, Nucleolus, Mitochondria,\nEndoplasmic Reticulum, Golgi Body, Ribosome, Centriole."
+      },
+      "Cell_Membrane": {
+        "marks_awarded": 0.7,
+        "max_marks": 1.0,
+        "percentage": 70.0,
+        "scores": {
+          "semantic_similarity": 0.875,
+          "coherence": 1.0,
+          "concept_coverage": 0.5,
+          "depth_score": 0.618
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.333,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "The cell membrane surrounds the cell and controls what enters and leaves it.\nIt is made of a phospholipid bilayer and is selectively permeable.",
+        "model_text": "The cell membrane (plasma membrane) is a flexible phospholipid bilayer that\nsurrounds the cell. It controls the movement of substances in and out of the\ncell (selective permeability). It also maintains cell shape and enables\ncell-to-cell communication via surface receptors."
+      },
+      "Nucleus": {
+        "marks_awarded": 0.8,
+        "max_marks": 1.0,
+        "percentage": 80.0,
+        "scores": {
+          "semantic_similarity": 0.929,
+          "coherence": 1.0,
+          "concept_coverage": 0.75,
+          "depth_score": 0.787
+        },
+        "cheating_detection": {
+          "is_suspicious": true,
+          "keyword_density": 0.5,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "The nucleus is the control centre of the cell. It contains DNA and chromosomes.\nIt is surrounded by the nuclear envelope.\n(Did not mention nucleolus or nuclear pores)",
+        "model_text": "The nucleus is the control centre of the cell. It is enclosed by the nuclear\nenvelope (double membrane with nuclear pores). It contains DNA in the form of\nchromosomes, which carry genetic information. The nucleolus inside the nucleus\nis responsible for producing ribosomes."
+      },
+      "Cytoplasm": {
+        "marks_awarded": 0.5,
+        "max_marks": 1.0,
+        "percentage": 50.0,
+        "scores": {
+          "semantic_similarity": 0.858,
+          "coherence": 0.8,
+          "concept_coverage": 0.375,
+          "depth_score": 0.583
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.167,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Cytoplasm is the fluid inside the cell. It contains the organelles.\nMitochondria produce energy (ATP). Ribosomes make proteins.\n(No mention of ER, Golgi Body, or Centriole)",
+        "model_text": "Cytoplasm is the jelly-like fluid (cytosol) that fills the cell between the\ncell membrane and the nucleus. It contains all organelles:\nMitochondria: powerhouse of the cell; produces ATP via cellular respiration.\nEndoplasmic Reticulum (ER): rough ER has ribosomes for protein synthesis;\nsmooth ER is involved in lipid synthesis and detoxification.\nGolgi Body: packages and ships proteins and lipids to their destination.\nRibosome: site of protein synthesis.\nCentriole: involved in cell division (forms spindle fibres)."
+      },
+      "Conclusion": {
+        "marks_awarded": 0.7,
+        "max_marks": 1.0,
+        "percentage": 70.0,
+        "scores": {
+          "semantic_similarity": 0.835,
+          "coherence": 1.0,
+          "concept_coverage": 0.375,
+          "depth_score": 0.598
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.273,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "The animal cell has many organelles that work together to keep the cell alive.\nEach part has its own function.",
+        "model_text": "The animal cell is a highly organised unit. Each organelle performs a specific\nfunction vital to the survival and proper functioning of the organism.\nTogether, they carry out life processes such as energy production, protein\nsynthesis, waste removal, and reproduction, making the cell the fundamental\nunit of life."
+      }
+    },
+    "feedback": {
+      "strengths": [
+        "\u2705 Introduction: Excellent understanding",
+        "\ud83d\udc4d Diagram: Good understanding",
+        "\ud83d\udc4d Cell_Membrane: Good understanding",
+        "\u2705 Nucleus: Excellent understanding",
+        "\ud83d\udc4d Cytoplasm: Good understanding",
+        "\ud83d\udc4d Conclusion: Good understanding"
+      ],
+      "improvements": [],
+      "warnings": [
+        "\u26a0\ufe0f Nucleus: High keyword density detected"
+      ]
+    },
+    "config_used": "Extracted Model Answer"
+  },
+  "student_answer": {
+    "Introduction": "An animal cell is the basic unit of life in animals. It is eukaryotic, meaning\nit has a nucleus. It does not have a cell wall like plant cells.",
+    "Diagram": "+-\n[Cell Membrane]+\n-+\n| Nucleus\n[Mitochondrial\nLabels: Cell Membrane, Nucleus, Mitochondria.\n(Note: ER, Golgi Body, Ribosome, Centriole not labeled)",
+    "Cell_Membrane": "The cell membrane surrounds the cell and controls what enters and leaves it.\nIt is made of a phospholipid bilayer and is selectively permeable.",
+    "Nucleus": "The nucleus is the control centre of the cell. It contains DNA and chromosomes.\nIt is surrounded by the nuclear envelope.\n(Did not mention nucleolus or nuclear pores)",
+    "Cytoplasm": "Cytoplasm is the fluid inside the cell. It contains the organelles.\nMitochondria produce energy (ATP). Ribosomes make proteins.\n(No mention of ER, Golgi Body, or Centriole)",
+    "Conclusion": "The animal cell has many organelles that work together to keep the cell alive.\nEach part has its own function."
+  },
+  "model_answer": {
+    "Introduction": "An animal cell is the basic structural and functional unit of all animal organisms.\nIt is a eukaryotic cell it has a membrane-bound nucleus and membrane-bound organelles.\nAnimal cells lack a cell wall, chloroplasts, and a large central vacuole.",
+    "Diagram": "Labeled diagram of an Animal Cell:\nCentriole\nCell Membrane\nV\nV\n[~Cell Membrane~]\n-+\n[Cen] |\n[Ribosome]\n|\n[ER] |\nNucleus\n[Nucleolus|\n| inside]\n[Golgi Body]\n[Mitochon] |\n~]\n----+\nEndoplasmic\nGolgi Body\nMitochondria\nReticulum (ER)\nLabels: Cell Membrane, Nucleus, Nucleolus, Mitochondria,\nEndoplasmic Reticulum, Golgi Body, Ribosome, Centriole.",
+    "Cell_Membrane": "The cell membrane (plasma membrane) is a flexible phospholipid bilayer that\nsurrounds the cell. It controls the movement of substances in and out of the\ncell (selective permeability). It also maintains cell shape and enables\ncell-to-cell communication via surface receptors.",
+    "Nucleus": "The nucleus is the control centre of the cell. It is enclosed by the nuclear\nenvelope (double membrane with nuclear pores). It contains DNA in the form of\nchromosomes, which carry genetic information. The nucleolus inside the nucleus\nis responsible for producing ribosomes.",
+    "Cytoplasm": "Cytoplasm is the jelly-like fluid (cytosol) that fills the cell between the\ncell membrane and the nucleus. It contains all organelles:\nMitochondria: powerhouse of the cell; produces ATP via cellular respiration.\nEndoplasmic Reticulum (ER): rough ER has ribosomes for protein synthesis;\nsmooth ER is involved in lipid synthesis and detoxification.\nGolgi Body: packages and ships proteins and lipids to their destination.\nRibosome: site of protein synthesis.\nCentriole: involved in cell division (forms spindle fibres).",
+    "Conclusion": "The animal cell is a highly organised unit. Each organelle performs a specific\nfunction vital to the survival and proper functioning of the organism.\nTogether, they carry out life processes such as energy production, protein\nsynthesis, waste removal, and reproduction, making the cell the fundamental\nunit of life."
+  },
+  "timestamp": "2026-05-16T05:23:32.670281"
+}

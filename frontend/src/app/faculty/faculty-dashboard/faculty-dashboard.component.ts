@@ -1,15 +1,16 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { UpperCasePipe, CommonModule } from '@angular/common';
 import { AuthService } from '../../shared/services/auth.service';
 import { FacultyService } from '../../shared/services/faculty.service';
 import { ToastService } from '../../shared/toast.service';
 import { Subscription } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-faculty-dashboard',
-  imports: [ReactiveFormsModule, UpperCasePipe, CommonModule],
+  imports: [ReactiveFormsModule, FormsModule, UpperCasePipe, CommonModule],
   templateUrl: './faculty-dashboard.component.html',
   styleUrl: './faculty-dashboard.component.css',
 })
@@ -40,6 +41,30 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
   currentPaperIndex = 0;
   currentPaperTotal = 0;
   currentEvaluationData: any = null;
+  currentSectionNames: string[] = [];
+
+  // Phase 1.1: Custom question sections
+  selectedSections: { name: string; marks: number }[] = [];
+
+  get totalSectionMarks(): number {
+    return this.selectedSections.reduce((sum, s) => sum + (s.marks || 0), 0);
+  }
+
+  addSection() {
+    this.selectedSections.push({ name: '', marks: 0 });
+    this.syncMaxMarksFromSections();
+  }
+
+  removeSection(index: number) {
+    this.selectedSections.splice(index, 1);
+    this.syncMaxMarksFromSections();
+  }
+
+  syncMaxMarksFromSections() {
+    if (this.selectedSections.length > 0) {
+      this.uploadForm.get('maxMarks')?.setValue(this.totalSectionMarks);
+    }
+  }
 
   get userInitial() { return this.auth.getUser()?.fullName?.charAt(0)?.toUpperCase() || 'F'; }
   get userName() { return this.auth.getUser()?.fullName || 'Faculty'; }
@@ -67,7 +92,7 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
       department: ['', Validators.required],
       examType: ['', Validators.required],
       semester: ['', Validators.required],
-      maxMarks: [{ value: '', disabled: true }],
+      maxMarks: [''],
       subject: ['', Validators.required],
       evaluationMode: ['ai'],
       enableCrossCheck: [true],
@@ -108,9 +133,12 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
   }
 
   updateMaxMarks() {
-    const examType = this.uploadForm.get('examType')?.value;
-    const marks: Record<string, number> = { mse: 30, ese: 80, makeup: 80, quiz: 20 };
-    this.uploadForm.patchValue({ maxMarks: marks[examType] ?? '' });
+    // Only auto-fill if no custom sections are defined (sections override the total)
+    if (this.selectedSections.length === 0) {
+      const examType = this.uploadForm.get('examType')?.value;
+      const marks: Record<string, number> = { mse: 30, ese: 80, makeup: 80, quiz: 20 };
+      this.uploadForm.patchValue({ maxMarks: marks[examType] ?? '' });
+    }
   }
 
   onStudentPapersChange(event: Event) {
@@ -184,6 +212,15 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
     this.evaluationLogs = [];
     this.addLogMessage('Starting evaluation process...', 'info');
 
+    // Validate sections if any are defined
+    if (this.selectedSections.length > 0) {
+      const invalidSections = this.selectedSections.filter(s => !s.name.trim() || s.marks <= 0);
+      if (invalidSections.length > 0) {
+        this.toastService.show('error', 'Each section must have a name and marks greater than 0.');
+        return;
+      }
+    }
+
     const fd = new FormData();
     const raw = this.uploadForm.getRawValue();
     Object.entries(raw).forEach(([key, val]) => fd.append(key, String(val)));
@@ -191,7 +228,10 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
       fd.append('studentPapers', paper.file);
       fd.append('studentEmails', paper.email.trim());
     });
-    fd.append('modelAnswer', this.selectedModelAnswer);
+    fd.append('modelAnswer', this.selectedModelAnswer!);
+    if (this.selectedSections.length > 0) {
+      fd.append('questions', JSON.stringify(this.selectedSections));
+    }
 
     this.facultyService.createExam(fd).subscribe({
       next: (examRes) => {
@@ -239,20 +279,23 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
           const enableCrossCheck = this.uploadForm.get('enableCrossCheck')?.value;
           
           if (enableCrossCheck && evalRes.data?.results) {
+            const backendBase = environment.apiUrl.replace('/api', '');
             this.crossCheckPapers = evalRes.data.results.map((result: any) => {
               const extractedAnswer = result.extractedAnswer || {};
               const aiDetails = result.aiEvaluationDetails || {};
+              const filePath = result.studentAnswerSheet?.filePath || '';
+              const studentImageUrl = filePath ? `${backendBase}${filePath}` : '';
 
               return {
                 resultId: result._id,
+                studentEmail: result.studentAnswerSheet?.email || '',
+                studentImageUrl,
                 usedMockEvaluation: result.usedMockEvaluation === true,
+                lowConfidence: aiDetails.low_confidence === true,
+                confidenceNote: aiDetails.confidence_note || null,
                 success: true,
                 student_extracted: {
-                  Answer: {
-                    Definition: extractedAnswer.Definition || aiDetails.student_text?.Definition || 'Not extracted',
-                    Body: extractedAnswer.Body || aiDetails.student_text?.Body || 'Not extracted',
-                    Conclusion: extractedAnswer.Conclusion || aiDetails.student_text?.Conclusion || 'Not extracted'
-                  }
+                  Answer: Object.keys(extractedAnswer).length > 0 ? extractedAnswer : (aiDetails.student_text || {})
                 },
                 evaluation: {
                   total_marks: result.totalMarksObtained || result.aiScore || 0,
@@ -365,20 +408,21 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
   }
 
   private resetFormAfterSubmit() {
-    this.uploadForm.reset({ 
-      evaluationMode: 'ai', 
-      enableCrossCheck: true, 
+    this.uploadForm.reset({
+      evaluationMode: 'ai',
+      enableCrossCheck: true,
       evaluationStrictness: 'moderate',
       academicYear: '',
       year: '',
       department: '',
       examType: '',
       semester: '',
-      subject: ''
+      subject: '',
+      maxMarks: ''
     });
-    this.uploadForm.get('maxMarks')?.disable();
     this.selectedStudentPapers = [];
     this.selectedModelAnswer = null;
+    this.selectedSections = [];
   }
 
   loadCurrentPaperForCrossCheck() {
@@ -399,9 +443,25 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
   private updateCrossCheckModal(paper: any) {
     const evaluation = paper.evaluation || {};
     const extracted = paper.student_extracted?.Answer || {};
-    // paper.usedMockEvaluation is used later in this method to show/hide section inputs
-    
+
     console.log('Updating modal with:', { evaluation, extracted });
+
+    // Phase 3.4: Show/hide low OCR confidence warning banner
+    let bannerEl = document.getElementById('ocrConfidenceBanner');
+    if (!bannerEl) {
+      // Create it once, insert at top of modal-body
+      bannerEl = document.createElement('div');
+      bannerEl.id = 'ocrConfidenceBanner';
+      bannerEl.style.cssText = 'background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;margin-bottom:12px;display:none;';
+      const modalBody = document.querySelector('.cross-check-modal .modal-body');
+      if (modalBody) modalBody.prepend(bannerEl);
+    }
+    if (paper.lowConfidence) {
+      bannerEl.style.display = 'block';
+      bannerEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <strong>Low OCR Confidence</strong> — ${paper.confidenceNote || 'Handwriting may be unclear. Please verify marks manually.'}`;
+    } else {
+      bannerEl.style.display = 'none';
+    }
     
     // Update AI Score
     const aiScoreEl = document.getElementById('aiScore');
@@ -420,13 +480,15 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
     
     const hasSectionScores = evaluation.section_scores && Object.keys(evaluation.section_scores).length > 0;
     const isMock = paper?.usedMockEvaluation === true;
+    // Use actual section names from the AI result (supports any custom sections)
+    this.currentSectionNames = hasSectionScores ? Object.keys(evaluation.section_scores) : [];
 
     // Update Section-wise AI Marks
     const aiQuestionMarks = document.getElementById('aiQuestionMarks');
     if (aiQuestionMarks) {
       aiQuestionMarks.innerHTML = '';
       if (hasSectionScores) {
-        const sections = ['Definition', 'Body', 'Conclusion'];
+        const sections = this.currentSectionNames;
         sections.forEach(section => {
           const sectionData = evaluation.section_scores[section];
           if (sectionData) {
@@ -457,7 +519,7 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
     if (manualQuestionMarks) {
       manualQuestionMarks.innerHTML = '';
       if (hasSectionScores) {
-        const sections = ['Definition', 'Body', 'Conclusion'];
+        const sections = this.currentSectionNames;
         sections.forEach(section => {
           const sectionData = evaluation.section_scores[section];
           if (sectionData) {
@@ -571,27 +633,46 @@ if (feedbackContent && evaluation.feedback) {
     feedbackContent.innerHTML = '<p class="text-muted" style="padding: 12px; color: #6c757d; margin: 0;">No feedback available for this evaluation</p>';
 }
     
-    // Update Extracted Student Answer Preview
+    // Update Extracted Student Answer Preview (OCR text) — dynamic sections
     const extractedPreview = document.getElementById('extractedAnswerPreview');
     if (extractedPreview) {
-      const definitionText = extracted.Definition || extracted.definition || 'Not extracted';
-      const bodyText = extracted.Body || extracted.body || 'Not extracted';
-      const conclusionText = extracted.Conclusion || extracted.conclusion || 'Not extracted';
-      
-      extractedPreview.innerHTML = `
-        <div class="extracted-section" style="margin-bottom: 15px;">
-          <h5 style="color: var(--primary); margin-bottom: 8px;"><i class="fas fa-book-open"></i> Definition</h5>
-          <p style="line-height: 1.5;">${this.escapeHtml(definitionText)}</p>
-        </div>
-        <div class="extracted-section" style="margin-bottom: 15px;">
-          <h5 style="color: var(--primary); margin-bottom: 8px;"><i class="fas fa-paragraph"></i> Body</h5>
-          <p style="line-height: 1.5;">${this.escapeHtml(bodyText)}</p>
-        </div>
-        <div class="extracted-section">
-          <h5 style="color: var(--primary); margin-bottom: 8px;"><i class="fas fa-flag-checkered"></i> Conclusion</h5>
-          <p style="line-height: 1.5;">${this.escapeHtml(conclusionText)}</p>
-        </div>
-      `;
+      const sectionIconMap: Record<string, string> = {
+        'Definition': 'fa-book-open', 'Body': 'fa-paragraph', 'Conclusion': 'fa-flag-checkered',
+        'Given': 'fa-clipboard-list', 'Introduction': 'fa-book-open', 'Derivation': 'fa-calculator'
+      };
+      const sectionKeys = Object.keys(extracted).length > 0
+        ? Object.keys(extracted)
+        : (this.currentSectionNames.length > 0 ? this.currentSectionNames : ['Definition', 'Body', 'Conclusion']);
+
+      extractedPreview.innerHTML = sectionKeys.map((key, idx) => {
+        const text = extracted[key] || 'Not extracted';
+        const icon = sectionIconMap[key] || 'fa-align-left';
+        const mb = idx < sectionKeys.length - 1 ? 'margin-bottom: 15px;' : '';
+        return `
+          <div class="extracted-section" style="${mb}">
+            <h5 style="color: var(--primary); margin-bottom: 8px;"><i class="fas ${icon}"></i> ${this.escapeHtml(key)}</h5>
+            <p style="line-height: 1.5;">${this.escapeHtml(text)}</p>
+          </div>`;
+      }).join('');
+    }
+
+    // Phase 1.4: Show actual student answer sheet image
+    const studentImagePanel = document.getElementById('studentImagePanel');
+    if (studentImagePanel) {
+      const imageUrl = paper.studentImageUrl || '';
+      const studentEmail = paper.studentEmail ? `<span style="font-size:0.85rem;color:#6c757d;">${this.escapeHtml(paper.studentEmail)}</span>` : '';
+
+      if (imageUrl) {
+        studentImagePanel.innerHTML = `
+          <div style="margin-bottom:8px;">${studentEmail}</div>
+          <img src="${imageUrl}" alt="Student answer sheet"
+               style="width:100%; max-height:500px; object-fit:contain; border:1px solid #dee2e6; border-radius:8px; cursor:zoom-in;"
+               onclick="this.style.maxHeight = this.style.maxHeight === 'none' ? '500px' : 'none'"
+               onerror="this.parentElement.innerHTML='<p style=\\'color:#dc3545;padding:12px;\\'>Could not load image. File may have been moved.</p>'">
+        `;
+      } else {
+        studentImagePanel.innerHTML = `<p style="color:#6c757d;padding:12px;">No image available for this student.</p>`;
+      }
     }
   }
 
@@ -606,10 +687,12 @@ if (feedbackContent && evaluation.feedback) {
   }
 
   updateManualScore() {
-    const sections = ['Definition', 'Body', 'Conclusion'];
+    const sections = this.currentSectionNames.length > 0
+      ? this.currentSectionNames
+      : ['Definition', 'Body', 'Conclusion'];
     let totalMarks = 0;
     let maxMarks = 0;
-    
+
     sections.forEach(section => {
       const input = document.getElementById(`manual_${section}`) as HTMLInputElement;
       if (input) {
@@ -678,7 +761,9 @@ if (feedbackContent && evaluation.feedback) {
     const paper = this.crossCheckPapers[this.currentPaperIndex];
     const resultId = paper?.resultId;
 
-    const sections = ['Definition', 'Body', 'Conclusion'];
+    const sections = this.currentSectionNames.length > 0
+      ? this.currentSectionNames
+      : ['Definition', 'Body', 'Conclusion'];
     const questionWiseMarks: any[] = [];
     let totalMarks = 0;
 

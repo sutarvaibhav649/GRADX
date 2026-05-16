@@ -84,9 +84,8 @@ const evaluationResultSchema = new mongoose.Schema(
       type: Date,
     },
     extractedAnswer: {
-      Definition: { type: String, default: '' },
-      Body: { type: String, default: '' },
-      Conclusion: { type: String, default: '' },
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
     aiEvaluationDetails: {
       type: mongoose.Schema.Types.Mixed,

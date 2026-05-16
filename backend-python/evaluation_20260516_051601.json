@@ -1,0 +1,138 @@
+{
+  "evaluation_result": {
+    "total_marks": 5,
+    "max_marks": 8,
+    "percentage": 62.5,
+    "section_scores": {
+      "Given": {
+        "marks_awarded": 0.3,
+        "max_marks": 0.5,
+        "percentage": 60.0,
+        "scores": {
+          "semantic_similarity": 0.756,
+          "coherence": 1.0,
+          "concept_coverage": 0.25,
+          "depth_score": 0.628
+        },
+        "cheating_detection": {
+          "is_suspicious": true,
+          "keyword_density": 0.5,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Equations: 2x + y = 7 and x - y = 2",
+        "model_text": "Two simultaneous linear equations:\n2x + y = 7 ... (1)\nx - y = 2 (2)\nWe need to find the values of x and y."
+      },
+      "Step1": {
+        "marks_awarded": 1.6,
+        "max_marks": 2.0,
+        "percentage": 80.0,
+        "scores": {
+          "semantic_similarity": 0.896,
+          "coherence": 1.0,
+          "concept_coverage": 0.5,
+          "depth_score": 0.822
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.25,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Add both equations:\n2x + y + x - y = 7 + 2\n3x = 9 so x = 3",
+        "model_text": "Add equation (1) and equation (2) to eliminate y:\n(2x + y) + (x - y) = 7 + 2\n3x = 9\nx = 3"
+      },
+      "Step2": {
+        "marks_awarded": 1.8,
+        "max_marks": 3.0,
+        "percentage": 60.0,
+        "scores": {
+          "semantic_similarity": 0.827,
+          "coherence": 1.0,
+          "concept_coverage": 0.0,
+          "depth_score": 0.797
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.0,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Putting x = 3 in x - y = 2:\n3 - y = 2\ny = 1",
+        "model_text": "Substitute x = 3 into equation (2):\n3 - y = 2\ny = 3-2\ny = 1"
+      },
+      "Step3": {
+        "marks_awarded": 1.0,
+        "max_marks": 2.0,
+        "percentage": 50.0,
+        "scores": {
+          "semantic_similarity": 0.664,
+          "coherence": 1.0,
+          "concept_coverage": 0.125,
+          "depth_score": 0.6
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.167,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Checking in equation 1: 2(3) + 1 = 7 correct.\n(Did not check equation 2 separately)",
+        "model_text": "Verification \u2014 substitute x = 3, y = 1 in both equations:\nEq (1): 2(3) + 1 = 6 + 1 = 7 [correct]\nEq (2): 3 - 1 = 2 [correct]\nBoth equations are satisfied, so the solution is correct."
+      },
+      "Conclusion": {
+        "marks_awarded": 0.3,
+        "max_marks": 0.5,
+        "percentage": 60.0,
+        "scores": {
+          "semantic_similarity": 0.76,
+          "coherence": 1.0,
+          "concept_coverage": 0.0,
+          "depth_score": 0.664
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.0,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Therefore x = 3 and y = 1.",
+        "model_text": "The solution of the system of equations is:\nx = 3 and y = 1"
+      }
+    },
+    "feedback": {
+      "strengths": [
+        "\ud83d\udc4d Given: Good understanding",
+        "\u2705 Step1: Excellent understanding",
+        "\ud83d\udc4d Step2: Good understanding",
+        "\ud83d\udc4d Step3: Good understanding",
+        "\ud83d\udc4d Conclusion: Good understanding"
+      ],
+      "improvements": [
+        "\ud83d\udd11 Given: Missing key concepts",
+        "\ud83d\udd11 Step2: Missing key concepts",
+        "\ud83d\udd11 Step3: Missing key concepts",
+        "\ud83d\udd11 Conclusion: Missing key concepts"
+      ],
+      "warnings": [
+        "\u26a0\ufe0f Given: High keyword density detected"
+      ]
+    },
+    "config_used": "Extracted Model Answer"
+  },
+  "student_answer": {
+    "Given": "Equations: 2x + y = 7 and x - y = 2",
+    "Step1": "Add both equations:\n2x + y + x - y = 7 + 2\n3x = 9 so x = 3",
+    "Step2": "Putting x = 3 in x - y = 2:\n3 - y = 2\ny = 1",
+    "Step3": "Checking in equation 1: 2(3) + 1 = 7 correct.\n(Did not check equation 2 separately)",
+    "Conclusion": "Therefore x = 3 and y = 1."
+  },
+  "model_answer": {
+    "Given": "Two simultaneous linear equations:\n2x + y = 7 ... (1)\nx - y = 2 (2)\nWe need to find the values of x and y.",
+    "Step1": "Add equation (1) and equation (2) to eliminate y:\n(2x + y) + (x - y) = 7 + 2\n3x = 9\nx = 3",
+    "Step2": "Substitute x = 3 into equation (2):\n3 - y = 2\ny = 3-2\ny = 1",
+    "Step3": "Verification \u2014 substitute x = 3, y = 1 in both equations:\nEq (1): 2(3) + 1 = 6 + 1 = 7 [correct]\nEq (2): 3 - 1 = 2 [correct]\nBoth equations are satisfied, so the solution is correct.",
+    "Conclusion": "The solution of the system of equations is:\nx = 3 and y = 1"
+  },
+  "timestamp": "2026-05-16T05:16:01.751831"
+}

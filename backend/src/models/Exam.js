@@ -81,9 +81,19 @@ const examSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    questions: [
+      {
+        sectionName: { type: String, required: true, trim: true },
+        maxMarks: { type: Number, required: true, min: 0 },
+      },
+    ],
     modelAnswerUploadedToAI: {
       type: Boolean,
       default: false,
+    },
+    modelAnswerExtracted: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
   },
   { timestamps: true }

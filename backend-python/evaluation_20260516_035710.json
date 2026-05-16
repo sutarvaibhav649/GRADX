@@ -1,0 +1,93 @@
+{
+  "evaluation_result": {
+    "total_marks": 3,
+    "max_marks": 7,
+    "percentage": 42.9,
+    "section_scores": {
+      "Definition": {
+        "marks_awarded": 1,
+        "max_marks": 2,
+        "percentage": 50.0,
+        "scores": {
+          "semantic_similarity": 0.662,
+          "coherence": 1.0,
+          "concept_coverage": 0.25,
+          "depth_score": 0.444
+        },
+        "cheating_detection": {
+          "is_suspicious": true,
+          "keyword_density": 0.429,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Deep Learning is a subset of Machine Learning that uses ne",
+        "model_text": "Deep Learning is a branch of Machine Learning that uses artificial neural networks with multiple layers (called deep neural networks) to automatically learn hierarchical representations from raw data without manual feature engineering. Each layer learns increasingly abstract features."
+      },
+      "Body": {
+        "marks_awarded": 1,
+        "max_marks": 3,
+        "percentage": 33.3,
+        "scores": {
+          "semantic_similarity": 0.563,
+          "coherence": 0.8,
+          "concept_coverage": 0.375,
+          "depth_score": 0.349
+        },
+        "cheating_detection": {
+          "is_suspicious": true,
+          "keyword_density": 0.429,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Deep Learning models have input, hidden, and output layers. They",
+        "model_text": "A deep learning network consists of an input layer, several hidden layers, and an output layer. Data flows forward through each layer (forward propagation), and the network adjusts its weights using backpropagation and gradient descent to minimize the loss function. Common architectures include:\n- Convolutional Neural Networks (CNN): used for image classification.\n- Recurrent Neural Networks (RNN / LSTM): used for sequential / time-series data.\n- Transformers: used for natural language processing tasks.\nTraining requires large labeled datasets and significant GPU compute power. Techniques like dropout, batch normalization, and data augmentation help prevent overfitting and improve generalization."
+      },
+      "Conclusion": {
+        "marks_awarded": 1,
+        "max_marks": 2,
+        "percentage": 50.0,
+        "scores": {
+          "semantic_similarity": 0.703,
+          "coherence": 1.0,
+          "concept_coverage": 0.125,
+          "depth_score": 0.485
+        },
+        "cheating_detection": {
+          "is_suspicious": false,
+          "keyword_density": 0.143,
+          "short_sentence_ratio": 0.0,
+          "repetition_score": 0.0
+        },
+        "student_text": "Deep Learning is used for image recognition, NLP, and self",
+        "model_text": "Deep Learning has revolutionized Artificial Intelligence, achieving state-of-the-art results in computer vision, speech recognition, natural language processing, and autonomous systems. It is the core technology behind modern AI applications such as ChatGPT, Tesla Autopilot, medical image diagnosis, and real-time language translation."
+      }
+    },
+    "feedback": {
+      "strengths": [
+        "\ud83d\udc4d Definition: Good understanding",
+        "\ud83d\udc4d Conclusion: Good understanding"
+      ],
+      "improvements": [
+        "\ud83d\udd11 Definition: Missing key concepts",
+        "\ud83d\udcda Body: Needs improvement",
+        "\ud83d\udd11 Conclusion: Missing key concepts"
+      ],
+      "warnings": [
+        "\u26a0\ufe0f Definition: High keyword density detected",
+        "\u26a0\ufe0f Body: High keyword density detected"
+      ]
+    },
+    "config_used": "Extracted Model Answer"
+  },
+  "student_answer": {
+    "Definition": "Deep Learning is a subset of Machine Learning that uses ne",
+    "Body": "Deep Learning models have input, hidden, and output layers. They",
+    "Conclusion": "Deep Learning is used for image recognition, NLP, and self"
+  },
+  "model_answer": {
+    "Definition": "Deep Learning is a branch of Machine Learning that uses artificial neural networks with multiple layers (called deep neural networks) to automatically learn hierarchical representations from raw data without manual feature engineering. Each layer learns increasingly abstract features.",
+    "Body": "A deep learning network consists of an input layer, several hidden layers, and an output layer. Data flows forward through each layer (forward propagation), and the network adjusts its weights using backpropagation and gradient descent to minimize the loss function. Common architectures include:\n- Convolutional Neural Networks (CNN): used for image classification.\n- Recurrent Neural Networks (RNN / LSTM): used for sequential / time-series data.\n- Transformers: used for natural language processing tasks.\nTraining requires large labeled datasets and significant GPU compute power. Techniques like dropout, batch normalization, and data augmentation help prevent overfitting and improve generalization.",
+    "Conclusion": "Deep Learning has revolutionized Artificial Intelligence, achieving state-of-the-art results in computer vision, speech recognition, natural language processing, and autonomous systems. It is the core technology behind modern AI applications such as ChatGPT, Tesla Autopilot, medical image diagnosis, and real-time language translation."
+  },
+  "timestamp": "2026-05-16T03:57:10.401405"
+}

@@ -106,6 +106,27 @@ const createExam = async (req, res) => {
       });
     }
 
+    // Parse optional questions/sections array
+    let questions = [];
+    if (req.body.questions) {
+      try {
+        const parsed = JSON.parse(req.body.questions);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          questions = parsed.map(q => ({
+            sectionName: String(q.name || q.sectionName || '').trim(),
+            maxMarks: Number(q.marks ?? q.maxMarks ?? 0)
+          })).filter(q => q.sectionName && q.maxMarks > 0);
+        }
+      } catch (e) {
+        // ignore malformed questions — fall back to default sections
+      }
+    }
+
+    // When custom sections are provided, override maxMarks with their sum
+    const effectiveMaxMarks = questions.length > 0
+      ? questions.reduce((sum, q) => sum + q.maxMarks, 0)
+      : marks;
+
     const exam = await Exam.create({
       facultyId: req.user._id,
       academicYear,
@@ -113,8 +134,9 @@ const createExam = async (req, res) => {
       department,
       examType,
       semester,
-      maxMarks: marks,
+      maxMarks: effectiveMaxMarks,
       subject,
+      questions,
       studentAnswerSheets: studentPapers,
       modelAnswer,
       evaluationMode,

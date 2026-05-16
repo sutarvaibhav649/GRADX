@@ -69,12 +69,15 @@
                                     </p>
                                 </div>
                             </div>
-                            <div class="answer-right">
+                            <div class="answer-right" style="display:flex;align-items:center;gap:10px;">
                                 <span style="font-size:0.8rem;padding:4px 10px;border-radius:20px;"
                                     [style.background]="result.evaluationStatus === 'finalized' ? '#d4edda' : '#fff3cd'"
                                     [style.color]="result.evaluationStatus === 'finalized' ? '#155724' : '#856404'">
                                     {{ result.evaluationStatus }}
                                 </span>
+                                <button class="btn btn-outline btn-sm" (click)="viewDetail(result._id)">
+                                    <i class="fas fa-eye"></i> Details
+                                </button>
                             </div>
                         </li>
                     }
@@ -85,4 +88,134 @@
             </div>
         </div>
     </main>
+</div>
+
+<!-- ════════════════ Result Detail Modal ════════════════ -->
+<div class="modal" [style.display]="showDetailModal ? 'flex' : 'none'">
+    <div class="modal-content result-detail-modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-chart-bar"></i> Result Details</h3>
+            <span class="close-modal" (click)="closeDetailModal()">&times;</span>
+        </div>
+
+        <div class="modal-body">
+            @if (loadingDetail) {
+                <div style="text-align:center;padding:3rem;">
+                    <i class="fas fa-spinner fa-spin fa-2x" style="color:#4e73df;"></i>
+                    <p style="margin-top:1rem;color:#6c757d;">Loading result...</p>
+                </div>
+            }
+
+            @if (!loadingDetail && selectedResult) {
+                <!-- Low OCR confidence banner -->
+                @if (lowConfidence) {
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Low OCR Confidence</strong> — The handwriting on this paper was difficult to read. Scores may not reflect actual content accurately.
+                    </div>
+                }
+
+                <!-- Exam info + score hero -->
+                <div class="result-hero">
+                    <div class="result-hero-info">
+                        <h4>{{ selectedResult.examId?.subject }}</h4>
+                        <p>{{ selectedResult.examId?.examType | uppercase }} &nbsp;·&nbsp; {{ selectedResult.examId?.department | uppercase }} &nbsp;·&nbsp; {{ selectedResult.examId?.academicYear }}</p>
+                        <p>Status: <strong>{{ selectedResult.evaluationStatus }}</strong></p>
+                    </div>
+                    <div class="score-hero-right">
+                        <div class="grade-badge" [style.background]="gradeColor">{{ selectedResult.grade }}</div>
+                        <div class="score-text">{{ selectedResult.finalScore }}/{{ selectedResult.maxMarks }}</div>
+                        <div class="pct-text">{{ selectedResult.percentage | number:'1.1-1' }}%</div>
+                    </div>
+                </div>
+
+                <!-- Class stats row -->
+                @if (selectedResult.classStats) {
+                    <div class="class-stats-row">
+                        <div class="class-stat">
+                            <span class="cs-value">{{ selectedResult.classStats.rank }}</span>
+                            <span class="cs-label">Class Rank</span>
+                        </div>
+                        <div class="class-stat">
+                            <span class="cs-value">{{ selectedResult.classStats.totalStudents }}</span>
+                            <span class="cs-label">Total Students</span>
+                        </div>
+                        <div class="class-stat">
+                            <span class="cs-value">{{ selectedResult.classStats.classAverage | number:'1.1-1' }}%</span>
+                            <span class="cs-label">Class Average</span>
+                        </div>
+                    </div>
+                }
+
+                <!-- Section scores -->
+                @if (sectionScores.length > 0) {
+                    <div class="section-card">
+                        <h5><i class="fas fa-list-check"></i> Section-wise Breakdown</h5>
+                        @for (sec of sectionScores; track sec.name) {
+                            <div class="section-row">
+                                <span class="sec-name">{{ sec.name }}</span>
+                                <div class="sec-bar-wrap">
+                                    <div class="sec-bar" [style.width.%]="sec.pct"
+                                         [style.background]="sec.pct >= 70 ? '#28a745' : sec.pct >= 40 ? '#fd7e14' : '#dc3545'">
+                                    </div>
+                                </div>
+                                <span class="sec-score">{{ sec.earned }}/{{ sec.max }}</span>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <!-- AI feedback -->
+                @if (feedback) {
+                    <div class="section-card">
+                        <h5><i class="fas fa-comment-dots"></i> AI Feedback</h5>
+                        @if (feedback.strengths?.length) {
+                            <div class="feedback-block strength">
+                                <strong>Strengths</strong>
+                                <ul>
+                                    @for (s of feedback.strengths; track $index) {
+                                        <li>{{ s }}</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                        @if (feedback.improvements?.length) {
+                            <div class="feedback-block improvement">
+                                <strong>Areas for Improvement</strong>
+                                <ul>
+                                    @for (i of feedback.improvements; track $index) {
+                                        <li>{{ i }}</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                        @if (feedback.warnings?.length) {
+                            <div class="feedback-block warning">
+                                <strong>Warnings</strong>
+                                <ul>
+                                    @for (w of feedback.warnings; track $index) {
+                                        <li>{{ w }}</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <!-- Answer sheet image -->
+                @if (studentImageUrl) {
+                    <div class="section-card">
+                        <h5><i class="fas fa-image"></i> Your Answer Sheet</h5>
+                        <img [src]="studentImageUrl" alt="Your answer sheet"
+                             style="width:100%;max-height:400px;object-fit:contain;border:1px solid #dee2e6;border-radius:8px;cursor:zoom-in;"
+                             (click)="$any($event.target).style.maxHeight = $any($event.target).style.maxHeight === 'none' ? '400px' : 'none'">
+                    </div>
+                }
+            }
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-outline" (click)="closeDetailModal()">Close</button>
+        </div>
+    </div>
 </div>
