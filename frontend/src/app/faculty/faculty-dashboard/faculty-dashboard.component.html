@@ -114,46 +114,125 @@
                         <input type="text" id="subject" formControlName="subject" required placeholder="Enter subject name">
                     </div>
 
-                    <!-- Phase 1.1: Custom Question Sections -->
+                    <!-- Question Configuration (single / multi-question mode) -->
                     <div class="form-group">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                             <label style="margin:0;">
                                 Question Sections
-                                <small style="color:#6c757d; font-weight:400;"> (optional — leave empty for default Definition/Body/Conclusion)</small>
+                                @if (!isMultiQuestion) {
+                                    <small style="color:#6c757d; font-weight:400;"> (optional — leave empty for default Definition/Body/Conclusion)</small>
+                                }
                             </label>
-                            <button type="button" class="btn btn-outline btn-sm" (click)="addSection()">
-                                <i class="fas fa-plus"></i> Add Section
-                            </button>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span style="font-size:0.8rem; color:#6c757d;">Mode:</span>
+                                <button type="button"
+                                        [class]="!isMultiQuestion ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm'"
+                                        (click)="isMultiQuestion && toggleMultiQuestion()"
+                                        style="font-size:0.78rem; padding:4px 10px;">
+                                    Single-Q
+                                </button>
+                                <button type="button"
+                                        [class]="isMultiQuestion ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm'"
+                                        (click)="!isMultiQuestion && toggleMultiQuestion()"
+                                        style="font-size:0.78rem; padding:4px 10px;">
+                                    Multi-Q (PDF)
+                                </button>
+                            </div>
                         </div>
 
-                        @if (selectedSections.length > 0) {
+                        @if (!isMultiQuestion) {
+                            <!-- Single-question sections builder (unchanged) -->
+                            <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
+                                <button type="button" class="btn btn-outline btn-sm" (click)="addSection()">
+                                    <i class="fas fa-plus"></i> Add Section
+                                </button>
+                            </div>
+                            @if (selectedSections.length > 0) {
+                                <div class="sections-builder">
+                                    @for (sec of selectedSections; track $index) {
+                                        <div class="section-row-builder">
+                                            <input type="text" class="section-name-input"
+                                                   placeholder="e.g. Definition, Derivation, Algorithm…"
+                                                   [(ngModel)]="sec.name"
+                                                   [ngModelOptions]="{standalone: true}">
+                                            <input type="number" class="section-marks-input"
+                                                   placeholder="Marks"
+                                                   min="0.5" step="0.5"
+                                                   [(ngModel)]="sec.marks"
+                                                   [ngModelOptions]="{standalone: true}"
+                                                   (ngModelChange)="syncMaxMarksFromSections()">
+                                            <button type="button" class="remove-section-btn" (click)="removeSection($index)">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                    <div class="sections-total">
+                                        <span>Total: <strong>{{ totalSectionMarks }} marks</strong></span>
+                                        <small style="color:#6c757d; margin-left:8px;">(overrides Max Marks above)</small>
+                                    </div>
+                                </div>
+                            }
+                        } @else {
+                            <!-- Multi-question builder (PDF support) -->
                             <div class="sections-builder">
-                                @for (sec of selectedSections; track $index) {
-                                    <div class="section-row-builder">
-                                        <input type="text" class="section-name-input"
-                                               placeholder="e.g. Definition, Derivation, Algorithm…"
-                                               [(ngModel)]="sec.name"
-                                               [ngModelOptions]="{standalone: true}">
-                                        <input type="number" class="section-marks-input"
-                                               placeholder="Marks"
-                                               min="0.5" step="0.5"
-                                               [(ngModel)]="sec.marks"
-                                               [ngModelOptions]="{standalone: true}"
-                                               (ngModelChange)="syncMaxMarksFromSections()">
-                                        <button type="button" class="remove-section-btn" (click)="removeSection($index)">
-                                            <i class="fas fa-times"></i>
-                                        </button>
+                                @for (q of questionSet; track $index; let qIdx = $index) {
+                                    <div class="question-container" style="background:#f8f9fa; border-radius:8px; padding:12px; margin-bottom:10px; border:1px solid #dee2e6;">
+                                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                                            <span style="font-weight:600; color:var(--primary); min-width:88px;">Question {{ qIdx + 1 }}</span>
+                                            <input type="text"
+                                                   style="flex:1; padding:6px 10px; border:1px solid #ced4da; border-radius:6px; font-size:0.85rem;"
+                                                   placeholder="Optional topic / question text"
+                                                   [(ngModel)]="q.questionText"
+                                                   [ngModelOptions]="{standalone: true}">
+                                            <button type="button" class="remove-section-btn" (click)="removeQuestion(qIdx)" title="Remove question">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                        <div style="padding-left:16px;">
+                                            @for (sec of q.sections; track $index; let sIdx = $index) {
+                                                <div class="section-row-builder" style="margin-bottom:6px;">
+                                                    <input type="text" class="section-name-input"
+                                                           placeholder="e.g. Introduction, Derivation…"
+                                                           [(ngModel)]="sec.name"
+                                                           [ngModelOptions]="{standalone: true}">
+                                                    <input type="number" class="section-marks-input"
+                                                           placeholder="Marks"
+                                                           min="0.5" step="0.5"
+                                                           [(ngModel)]="sec.marks"
+                                                           [ngModelOptions]="{standalone: true}"
+                                                           (ngModelChange)="syncMaxMarks()">
+                                                    <button type="button" class="remove-section-btn" (click)="removeQuestionSection(qIdx, sIdx)" title="Remove section">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                            }
+                                            <button type="button" class="btn btn-outline btn-sm"
+                                                    (click)="addQuestionSection(qIdx)"
+                                                    style="margin-top:4px; font-size:0.78rem;">
+                                                <i class="fas fa-plus"></i> Add Section
+                                            </button>
+                                        </div>
                                     </div>
                                 }
-                                <div class="sections-total">
-                                    <span>Total: <strong>{{ totalSectionMarks }} marks</strong></span>
-                                    <small style="color:#6c757d; margin-left:8px;">(overrides Max Marks above)</small>
+                                <button type="button" class="btn btn-outline btn-sm"
+                                        (click)="addQuestion()"
+                                        style="width:100%; margin-top:2px;">
+                                    <i class="fas fa-plus-circle"></i> Add Question
+                                </button>
+                                <div class="sections-total" style="margin-top:8px;">
+                                    <span>Total: <strong>{{ totalQuestionSetMarks }} marks</strong></span>
+                                    <small style="color:#6c757d; margin-left:8px;">(across all questions)</small>
                                 </div>
                             </div>
                         }
+
                         <small class="upload-hint">
                             <i class="fas fa-info-circle"></i>
-                            Section names should match the headings students write in their answers.
+                            @if (!isMultiQuestion) {
+                                Section names should match the headings students write in their answers.
+                            } @else {
+                                Multi-Q: upload PDF files. Each question is evaluated independently using its own sections.
+                            }
                         </small>
                     </div>
 
@@ -163,18 +242,18 @@
                             <div>
                                 <i class="fas fa-cloud-upload-alt"></i>
                                 <h3>Upload Student Answer Sheets</h3>
-                                <p>Click Add to browse Image files, then enter each student email.</p>
+                                <p>Click Add to browse — Images or PDFs @if (isMultiQuestion) { (PDF for multi-question) }</p>
                             </div>
                             <button type="button" class="upload-add-btn" (click)="studentPapersInput.click()">
                                 <span><i class="fas fa-plus"></i>Add</span>
                             </button>
                         </div>
-                        <input type="file" #studentPapersInput multiple accept="image/*" style="display: none;" (change)="onStudentPapersChange($event)">
+                        <input type="file" #studentPapersInput multiple accept="image/*,application/pdf" style="display: none;" (change)="onStudentPapersChange($event)">
                         <div class="file-preview">
                             @for (paper of selectedStudentPapers; track $index) {
                                 <div class="paper-row">
                                     <span class="file-name">
-                                        <i class="fas fa-file-image"></i> {{ paper.file.name }}
+                                        <i [class]="paper.file.type === 'application/pdf' ? 'fas fa-file-pdf' : 'fas fa-file-image'"></i> {{ paper.file.name }}
                                     </span>
                                     <input type="email" class="paper-email" placeholder="Student email" 
                                            [value]="paper.email" 
@@ -193,12 +272,12 @@
                     <div class="upload-area upload-area--compact" (click)="modelAnswerInput.click()">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <h3>Upload Model Answer Key</h3>
-                        <p>Click to browse or drag & drop Image file</p>
-                        <input type="file" #modelAnswerInput accept="image/*" style="display: none;" (change)="onModelAnswerChange($event)">
+                        <p>Click to browse — Image or PDF @if (isMultiQuestion) { (PDF recommended for multi-question) }</p>
+                        <input type="file" #modelAnswerInput accept="image/*,application/pdf" style="display: none;" (change)="onModelAnswerChange($event)">
                         <div class="file-preview">
                             @if (selectedModelAnswer) {
                                 <span style="display:block;font-size:0.85rem;color:#555;margin-top:4px;">
-                                    <i class="fas fa-file-image"></i> {{ selectedModelAnswer.name }}
+                                    <i [class]="selectedModelAnswer.type === 'application/pdf' ? 'fas fa-file-pdf' : 'fas fa-file-image'"></i> {{ selectedModelAnswer.name }}
                                 </span>
                             }
                         </div>

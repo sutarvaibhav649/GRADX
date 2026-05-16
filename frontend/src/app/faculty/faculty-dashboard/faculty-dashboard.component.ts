@@ -43,11 +43,59 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
   currentEvaluationData: any = null;
   currentSectionNames: string[] = [];
 
-  // Phase 1.1: Custom question sections
+  // Phase 1.1: Custom question sections (single-question mode)
   selectedSections: { name: string; marks: number }[] = [];
+
+  // Multi-question mode
+  isMultiQuestion = false;
+  questionSet: Array<{ questionText: string; sections: { name: string; marks: number }[] }> = [];
 
   get totalSectionMarks(): number {
     return this.selectedSections.reduce((sum, s) => sum + (s.marks || 0), 0);
+  }
+
+  get totalQuestionSetMarks(): number {
+    return this.questionSet.reduce(
+      (sum, q) => sum + q.sections.reduce((s2, sec) => s2 + (sec.marks || 0), 0), 0
+    );
+  }
+
+  toggleMultiQuestion() {
+    this.isMultiQuestion = !this.isMultiQuestion;
+    if (this.isMultiQuestion && this.questionSet.length === 0) {
+      this.addQuestion();
+    }
+    this.syncMaxMarks();
+  }
+
+  addQuestion() {
+    this.questionSet.push({ questionText: '', sections: [{ name: '', marks: 0 }] });
+    this.syncMaxMarks();
+  }
+
+  removeQuestion(index: number) {
+    this.questionSet.splice(index, 1);
+    this.syncMaxMarks();
+  }
+
+  addQuestionSection(qIdx: number) {
+    this.questionSet[qIdx].sections.push({ name: '', marks: 0 });
+    this.syncMaxMarks();
+  }
+
+  removeQuestionSection(qIdx: number, sIdx: number) {
+    this.questionSet[qIdx].sections.splice(sIdx, 1);
+    this.syncMaxMarks();
+  }
+
+  syncMaxMarks() {
+    if (this.isMultiQuestion) {
+      if (this.totalQuestionSetMarks > 0) {
+        this.uploadForm.get('maxMarks')?.setValue(this.totalQuestionSetMarks);
+      }
+    } else if (this.selectedSections.length > 0) {
+      this.uploadForm.get('maxMarks')?.setValue(this.totalSectionMarks);
+    }
   }
 
   addSection() {
@@ -212,8 +260,20 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
     this.evaluationLogs = [];
     this.addLogMessage('Starting evaluation process...', 'info');
 
-    // Validate sections if any are defined
-    if (this.selectedSections.length > 0) {
+    // Validate question config
+    if (this.isMultiQuestion) {
+      if (this.questionSet.length === 0) {
+        this.toastService.show('error', 'Add at least one question in multi-question mode.');
+        return;
+      }
+      for (const q of this.questionSet) {
+        const invalid = q.sections.filter(s => !s.name.trim() || s.marks <= 0);
+        if (invalid.length > 0) {
+          this.toastService.show('error', 'Each section must have a name and marks greater than 0.');
+          return;
+        }
+      }
+    } else if (this.selectedSections.length > 0) {
       const invalidSections = this.selectedSections.filter(s => !s.name.trim() || s.marks <= 0);
       if (invalidSections.length > 0) {
         this.toastService.show('error', 'Each section must have a name and marks greater than 0.');
@@ -229,7 +289,15 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
       fd.append('studentEmails', paper.email.trim());
     });
     fd.append('modelAnswer', this.selectedModelAnswer!);
-    if (this.selectedSections.length > 0) {
+    if (this.isMultiQuestion && this.questionSet.length > 0) {
+      // Multi-question: send questionSet JSON
+      const qsPayload = this.questionSet.map((q, idx) => ({
+        number: idx + 1,
+        text: q.questionText.trim(),
+        sections: q.sections.map(s => ({ name: s.name.trim(), marks: s.marks }))
+      }));
+      fd.append('questionSet', JSON.stringify(qsPayload));
+    } else if (this.selectedSections.length > 0) {
       fd.append('questions', JSON.stringify(this.selectedSections));
     }
 
@@ -423,6 +491,8 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
     this.selectedStudentPapers = [];
     this.selectedModelAnswer = null;
     this.selectedSections = [];
+    this.questionSet = [];
+    this.isMultiQuestion = false;
   }
 
   loadCurrentPaperForCrossCheck() {

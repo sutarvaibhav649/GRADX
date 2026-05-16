@@ -135,3 +135,69 @@ def extract_student_json(image_path: str, section_names: list = None) -> dict:
     except Exception as e:
         print(f"❌ OCR Error: {e}")
         raise ValueError(f"Failed to extract text from image: {e}")
+
+
+def extract_raw_text_from_image(image_path: str) -> str:
+    """Extract ALL visible text from an image as plain text (no section structure)."""
+    prompt = """You are an OCR system. Extract ALL text visible in this handwritten or printed image.
+
+RULES:
+- Output ONLY the raw text you see, nothing else
+- Preserve line breaks and section headings exactly as written
+- Include all labels, headings, and body text
+- If any word is unclear, write your best guess inside [brackets]
+- Do NOT add explanations, formatting, or commentary"""
+
+    try:
+        base64_image = encode_image_to_base64(image_path)
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                ]
+            }],
+            extra_headers={"HTTP-Referer": YOUR_SITE_URL, "X-Title": YOUR_SITE_NAME},
+            max_tokens=2048,
+            temperature=0.1,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"Raw text extraction error: {e}")
+        return ""
+
+
+def extract_multi_question_from_images(
+    image_paths: list,
+    question_configs: list
+) -> dict:
+    """
+    Extract multi-question answers from scanned PDF page images.
+    Each image = one PDF page. Combines all pages, splits by question, extracts sections.
+    Returns: {1: {"Introduction": "...", ...}, 2: {...}, ...}
+    """
+    from app.services.pdf_processor import split_by_questions, extract_sections_from_text
+
+    # Step 1: OCR every page to raw text
+    all_text = ""
+    for i, img_path in enumerate(image_paths):
+        print(f"  OCR page {i+1}/{len(image_paths)}: {img_path}")
+        page_text = extract_raw_text_from_image(img_path)
+        all_text += f"\n--- Page {i+1} ---\n{page_text}"
+
+    # Step 2: Split combined text by question boundaries
+    q_chunks = split_by_questions(all_text, question_configs)
+
+    # Step 3: Extract sections from each question chunk
+    result = {}
+    for cfg in question_configs:
+        q_num = cfg["number"]
+        section_names = [s["name"] for s in cfg["sections"]]
+        chunk = q_chunks.get(q_num, "")
+        result[q_num] = extract_sections_from_text(chunk, section_names)
+        total = sum(len(v) for v in result[q_num].values())
+        print(f"  Q{q_num}: {total} chars across {len(section_names)} sections")
+
+    return result

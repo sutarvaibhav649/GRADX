@@ -68,6 +68,62 @@ const callFastAPIEvaluation = async (studentImagePath, examId) => {
     }
 };
 
+// Multi-question PDF evaluation
+const callFastAPIPDFEvaluation = async (studentFilePath, examId) => {
+    try {
+        if (!fs.existsSync(studentFilePath)) {
+            console.error(`File not found: ${studentFilePath}`);
+            return null;
+        }
+        const formData = new FormData();
+        formData.append('file', fs.createReadStream(studentFilePath));
+        const response = await axios.post(
+            `${FASTAPI_BASE}/api/evaluation/evaluate-pdf?exam_id=${examId}`,
+            formData,
+            { headers: { ...formData.getHeaders() }, timeout: 600000 }
+        );
+        if (response.data.success) {
+            return {
+                success: true,
+                totalMarks: response.data.total_marks,
+                maxMarks: response.data.max_marks,
+                percentage: response.data.percentage,
+                questionResults: response.data.question_results || {},
+                studentExtracted: response.data.student_extracted || {},
+                lowConfidence: response.data.low_confidence || false,
+                confidenceNote: response.data.confidence_note || null
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error('FastAPI PDF evaluation failed:', error.message);
+        if (error.response) console.error('FastAPI response:', error.response.data);
+        return null;
+    }
+};
+
+// Upload multi-question model answer PDF to FastAPI
+const uploadModelPDFToFastAPI = async (modelPath, examId, questionConfigs) => {
+    try {
+        if (!fs.existsSync(modelPath)) {
+            console.error(`Model file not found: ${modelPath}`);
+            return null;
+        }
+        const formData = new FormData();
+        formData.append('file', fs.createReadStream(modelPath));
+        formData.append('questions', JSON.stringify(questionConfigs));
+        const response = await axios.post(
+            `${FASTAPI_BASE}/api/evaluation/upload-model-pdf?exam_id=${examId}`,
+            formData,
+            { headers: { ...formData.getHeaders() }, timeout: 120000 }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Failed to upload model PDF:', error.message);
+        return null;
+    }
+};
+
 const uploadModelAnswerToFastAPI = async (modelAnswerPath, examId, sections = []) => {
     try {
         if (!fs.existsSync(modelAnswerPath)) {
@@ -155,72 +211,141 @@ const startEvaluation = async (req, res) => {
         
         const examIdStr = exam._id.toString();
 
-        // Build sections array from exam.questions (empty = use FastAPI defaults)
+        // ── Route: multi-question vs single-question ──────────────────────────
+        const isMultiQ = exam.isMultiQuestion === true && exam.questionSet?.length > 0;
+
+        // Build question configs for multi-question mode
+        const questionConfigs = isMultiQ
+            ? exam.questionSet.map(q => ({
+                number: q.questionNumber,
+                text:   q.questionText || '',
+                sections: q.sections.map(s => ({ name: s.sectionName, marks: s.maxMarks }))
+              }))
+            : [];
+
+        // Build sections array for single-question mode
         const examSections = (exam.questions || []).map(q => ({
             name: q.sectionName,
             marks: q.maxMarks
         }));
 
-        // Phase 1.3: Always verify model answer is in FastAPI memory.
-        // FastAPI loses in-memory state on restart, so we check before every evaluation.
+        // Phase 1.3: Ensure model answer is loaded in FastAPI memory.
         if (exam.modelAnswer) {
-            let modelInMemory = false;
-            try {
-                const cfgRes = await axios.get(
-                    `${FASTAPI_BASE}/api/evaluation/config?exam_id=${examIdStr}`,
-                    { timeout: 5000 }
-                );
-                modelInMemory = cfgRes.data.configured === true;
-            } catch (e) {
-                console.log(`FastAPI config check skipped: ${e.message}`);
-            }
+            const modelFileName = path.basename(exam.modelAnswer.filePath);
+            const modelAnswerPath = path.join(backendRoot, 'uploads/model-answers', modelFileName);
 
-            if (!modelInMemory) {
-                let restored = false;
+            if (isMultiQ) {
+                // ── Multi-question: check /evaluate-pdf readiness via config endpoint ──
+                let multiInMemory = false;
+                try {
+                    const cfgRes = await axios.get(
+                        `${FASTAPI_BASE}/api/evaluation/config?exam_id=${examIdStr}`,
+                        { timeout: 5000 }
+                    );
+                    multiInMemory = cfgRes.data.configured === true;
+                } catch (e) { /* skip */ }
 
-                // Fast path: restore from pre-extracted JSON saved in MongoDB (no OCR cost)
-                const extractedAnswer = exam.modelAnswerExtracted;
-                const hasExtracted = extractedAnswer && Object.keys(extractedAnswer).length > 0
-                    && Object.values(extractedAnswer).some(v => v);
-                if (hasExtracted) {
-                    try {
-                        await axios.post(
-                            `${FASTAPI_BASE}/api/evaluation/restore-model?exam_id=${examIdStr}`,
-                            { answer: extractedAnswer, sections: examSections },
-                            { timeout: 10000 }
-                        );
-                        restored = true;
-                        console.log(`Model answer restored from MongoDB JSON for exam ${examIdStr}`);
-                    } catch (e) {
-                        console.log(`JSON restore failed: ${e.message} — falling back to image upload`);
-                    }
-                }
-
-                // Slow path: re-upload image and run OCR
-                if (!restored) {
-                    const modelFileName = path.basename(exam.modelAnswer.filePath);
-                    const modelAnswerPath = path.join(backendRoot, 'uploads/model-answers', modelFileName);
-                    console.log(`Looking for model answer at: ${modelAnswerPath}`);
-
-                    if (fs.existsSync(modelAnswerPath)) {
-                        const uploadResult = await uploadModelAnswerToFastAPI(modelAnswerPath, examIdStr, examSections);
-                        if (uploadResult?.success) {
-                            exam.modelAnswerUploadedToAI = true;
-                            if (uploadResult.model_extracted?.Answer) {
-                                exam.modelAnswerExtracted = uploadResult.model_extracted.Answer;
+                if (!multiInMemory) {
+                    // Fast path: restore from MongoDB JSON (no re-OCR)
+                    const hasExtracted = exam.questionSet?.some(q =>
+                        q.modelAnswerExtracted && Object.keys(q.modelAnswerExtracted).length > 0
+                    );
+                    if (hasExtracted) {
+                        try {
+                            const extractedMap = {};
+                            exam.questionSet.forEach(q => {
+                                extractedMap[q.questionNumber] = q.modelAnswerExtracted;
+                            });
+                            await axios.post(
+                                `${FASTAPI_BASE}/api/evaluation/restore-model-pdf?exam_id=${examIdStr}`,
+                                { model_extracted: extractedMap, questions: questionConfigs },
+                                { timeout: 10000 }
+                            );
+                            console.log(`Multi-Q model restored from MongoDB for exam ${examIdStr}`);
+                        } catch (e) {
+                            console.log(`Multi-Q JSON restore failed: ${e.message} — re-uploading PDF`);
+                            if (fs.existsSync(modelAnswerPath)) {
+                                const up = await uploadModelPDFToFastAPI(modelAnswerPath, examIdStr, questionConfigs);
+                                if (up?.success) {
+                                    // Save extracted per-question model answers back to MongoDB
+                                    const extracted = up.model_extracted || {};
+                                    exam.questionSet = exam.questionSet.map(q => ({
+                                        ...q.toObject(),
+                                        modelAnswerExtracted: extracted[q.questionNumber] || {}
+                                    }));
+                                    exam.modelAnswerUploadedToAI = true;
+                                    await exam.save();
+                                }
                             }
-                            await exam.save();
-                            console.log(`Model answer uploaded and extracted for exam ${examIdStr}`);
-                        } else {
-                            console.log(`Failed to upload model answer for exam ${examIdStr} — will use mock scores`);
                         }
-                    } else {
-                        console.log(`Model answer file not found: ${modelAnswerPath} — will use mock scores`);
+                    } else if (fs.existsSync(modelAnswerPath)) {
+                        const up = await uploadModelPDFToFastAPI(modelAnswerPath, examIdStr, questionConfigs);
+                        if (up?.success) {
+                            const extracted = up.model_extracted || {};
+                            exam.questionSet = exam.questionSet.map(q => ({
+                                ...q.toObject(),
+                                modelAnswerExtracted: extracted[q.questionNumber] || {}
+                            }));
+                            exam.modelAnswerUploadedToAI = true;
+                            await exam.save();
+                            console.log(`Multi-Q model uploaded for exam ${examIdStr}`);
+                        }
                     }
                 }
-            } else if (!exam.modelAnswerUploadedToAI) {
-                exam.modelAnswerUploadedToAI = true;
-                await exam.save();
+            } else {
+                // ── Single-question: original flow ──────────────────────────────────
+                let modelInMemory = false;
+                try {
+                    const cfgRes = await axios.get(
+                        `${FASTAPI_BASE}/api/evaluation/config?exam_id=${examIdStr}`,
+                        { timeout: 5000 }
+                    );
+                    modelInMemory = cfgRes.data.configured === true;
+                } catch (e) {
+                    console.log(`FastAPI config check skipped: ${e.message}`);
+                }
+
+                if (!modelInMemory) {
+                    let restored = false;
+                    const extractedAnswer = exam.modelAnswerExtracted;
+                    const hasExtracted = extractedAnswer && Object.keys(extractedAnswer).length > 0
+                        && Object.values(extractedAnswer).some(v => v);
+                    if (hasExtracted) {
+                        try {
+                            await axios.post(
+                                `${FASTAPI_BASE}/api/evaluation/restore-model?exam_id=${examIdStr}`,
+                                { answer: extractedAnswer, sections: examSections },
+                                { timeout: 10000 }
+                            );
+                            restored = true;
+                            console.log(`Model answer restored from MongoDB JSON for exam ${examIdStr}`);
+                        } catch (e) {
+                            console.log(`JSON restore failed: ${e.message} — falling back to image upload`);
+                        }
+                    }
+
+                    if (!restored) {
+                        console.log(`Looking for model answer at: ${modelAnswerPath}`);
+                        if (fs.existsSync(modelAnswerPath)) {
+                            const uploadResult = await uploadModelAnswerToFastAPI(modelAnswerPath, examIdStr, examSections);
+                            if (uploadResult?.success) {
+                                exam.modelAnswerUploadedToAI = true;
+                                if (uploadResult.model_extracted?.Answer) {
+                                    exam.modelAnswerExtracted = uploadResult.model_extracted.Answer;
+                                }
+                                await exam.save();
+                                console.log(`Model answer uploaded and extracted for exam ${examIdStr}`);
+                            } else {
+                                console.log(`Failed to upload model answer for exam ${examIdStr} — will use mock scores`);
+                            }
+                        } else {
+                            console.log(`Model answer file not found: ${modelAnswerPath} — will use mock scores`);
+                        }
+                    }
+                } else if (!exam.modelAnswerUploadedToAI) {
+                    exam.modelAnswerUploadedToAI = true;
+                    await exam.save();
+                }
             }
         }
 
@@ -267,24 +392,76 @@ const startEvaluation = async (req, res) => {
 
             try {
                 if (fs.existsSync(studentImagePath)) {
-                    const aiResult = await callFastAPIEvaluation(studentImagePath, examIdStr);
+                    if (isMultiQ) {
+                        // ── Multi-question PDF path ────────────────────────────────────
+                        const aiResult = await callFastAPIPDFEvaluation(studentImagePath, examIdStr);
+                        if (aiResult && aiResult.success) {
+                            percentage = parseFloat(aiResult.percentage.toFixed(2));
+                            finalScore = Math.round((percentage / 100) * exam.maxMarks);
+                            lowConfidence = aiResult.lowConfidence || false;
 
-                    if (aiResult && aiResult.success) {
-                        percentage = parseFloat(aiResult.percentage.toFixed(2));
-                        finalScore = Math.round((percentage / 100) * exam.maxMarks);
-                        detailedEval = aiResult.detailedResult;
-                        extractedAnswerData = aiResult.studentExtracted?.Answer || null;
-                        lowConfidence = aiResult.lowConfidence || false;
-                        if (detailedEval) {
-                            detailedEval.low_confidence = lowConfidence;
-                            detailedEval.confidence_note = aiResult.confidenceNote || null;
+                            // Flatten per-question section_scores → "Q{n}: {section}" keys
+                            const flatSectionScores = {};
+                            const flatExtracted = {};
+                            Object.entries(aiResult.questionResults || {}).forEach(([qNum, qResult]) => {
+                                Object.entries(qResult.section_scores || {}).forEach(([sec, secData]) => {
+                                    flatSectionScores[`Q${qNum}: ${sec}`] = secData;
+                                });
+                            });
+                            Object.entries(aiResult.studentExtracted || {}).forEach(([qNum, sections]) => {
+                                Object.entries(sections || {}).forEach(([sec, text]) => {
+                                    flatExtracted[`Q${qNum}: ${sec}`] = text;
+                                });
+                            });
+
+                            // Merge feedback from all questions
+                            const mergedFeedback = { strengths: [], improvements: [], warnings: [] };
+                            Object.entries(aiResult.questionResults || {}).forEach(([qNum, qResult]) => {
+                                const fb = qResult.feedback || {};
+                                (fb.strengths || []).forEach(s => mergedFeedback.strengths.push(`[Q${qNum}] ${s}`));
+                                (fb.improvements || []).forEach(i => mergedFeedback.improvements.push(`[Q${qNum}] ${i}`));
+                                (fb.warnings || []).forEach(w => mergedFeedback.warnings.push(`[Q${qNum}] ${w}`));
+                            });
+
+                            detailedEval = {
+                                total_marks: aiResult.totalMarks,
+                                max_marks: aiResult.maxMarks,
+                                percentage: aiResult.percentage,
+                                section_scores: flatSectionScores,
+                                question_results: aiResult.questionResults,
+                                feedback: mergedFeedback,
+                                low_confidence: lowConfidence,
+                                confidence_note: aiResult.confidenceNote || null,
+                            };
+                            extractedAnswerData = flatExtracted;
+                            console.log(`  PDF AI result: ${finalScore}/${exam.maxMarks} (${percentage}%)${lowConfidence ? ' [LOW CONFIDENCE]' : ''}`);
+                        } else {
+                            usedMock = true;
+                            finalScore = simulateAIEvaluation(exam.maxMarks, exam.evaluationStrictness);
+                            percentage = parseFloat(((finalScore / exam.maxMarks) * 100).toFixed(2));
+                            console.log(`  FastAPI PDF returned no result — mock: ${finalScore}/${exam.maxMarks}`);
                         }
-                        console.log(`  AI result: ${finalScore}/${exam.maxMarks} (${percentage}%)${lowConfidence ? ' [LOW CONFIDENCE]' : ''}`);
                     } else {
-                        usedMock = true;
-                        finalScore = simulateAIEvaluation(exam.maxMarks, exam.evaluationStrictness);
-                        percentage = parseFloat(((finalScore / exam.maxMarks) * 100).toFixed(2));
-                        console.log(`  FastAPI returned no result — mock: ${finalScore}/${exam.maxMarks}`);
+                        // ── Single-question image path ─────────────────────────────────
+                        const aiResult = await callFastAPIEvaluation(studentImagePath, examIdStr);
+
+                        if (aiResult && aiResult.success) {
+                            percentage = parseFloat(aiResult.percentage.toFixed(2));
+                            finalScore = Math.round((percentage / 100) * exam.maxMarks);
+                            detailedEval = aiResult.detailedResult;
+                            extractedAnswerData = aiResult.studentExtracted?.Answer || null;
+                            lowConfidence = aiResult.lowConfidence || false;
+                            if (detailedEval) {
+                                detailedEval.low_confidence = lowConfidence;
+                                detailedEval.confidence_note = aiResult.confidenceNote || null;
+                            }
+                            console.log(`  AI result: ${finalScore}/${exam.maxMarks} (${percentage}%)${lowConfidence ? ' [LOW CONFIDENCE]' : ''}`);
+                        } else {
+                            usedMock = true;
+                            finalScore = simulateAIEvaluation(exam.maxMarks, exam.evaluationStrictness);
+                            percentage = parseFloat(((finalScore / exam.maxMarks) * 100).toFixed(2));
+                            console.log(`  FastAPI returned no result — mock: ${finalScore}/${exam.maxMarks}`);
+                        }
                     }
                 } else {
                     usedMock = true;
