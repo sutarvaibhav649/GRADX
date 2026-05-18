@@ -30,7 +30,7 @@ function simulateAIEvaluation(maxMarks, strictness) {
 // ==================== FASTAPI INTEGRATION ====================
 const FASTAPI_BASE = process.env.FASTAPI_URL || 'http://localhost:8000';
 
-const callFastAPIEvaluation = async (studentImagePath, examId) => {
+const callFastAPIEvaluation = async (studentImagePath, examId, strictness = 'moderate', subject = '') => {
     try {
         if (!fs.existsSync(studentImagePath)) {
             console.error(`File not found: ${studentImagePath}`);
@@ -40,8 +40,9 @@ const callFastAPIEvaluation = async (studentImagePath, examId) => {
         const formData = new FormData();
         formData.append('file', fs.createReadStream(studentImagePath));
 
+        const params = new URLSearchParams({ exam_id: examId, strictness, subject });
         const response = await axios.post(
-            `${FASTAPI_BASE}/api/evaluation/evaluate-image?exam_id=${examId}`,
+            `${FASTAPI_BASE}/api/evaluation/evaluate-image?${params}`,
             formData,
             { headers: { ...formData.getHeaders() }, timeout: 600000 }
         );
@@ -69,7 +70,7 @@ const callFastAPIEvaluation = async (studentImagePath, examId) => {
 };
 
 // Multi-question PDF evaluation
-const callFastAPIPDFEvaluation = async (studentFilePath, examId) => {
+const callFastAPIPDFEvaluation = async (studentFilePath, examId, strictness = 'moderate', subject = '') => {
     try {
         if (!fs.existsSync(studentFilePath)) {
             console.error(`File not found: ${studentFilePath}`);
@@ -77,8 +78,9 @@ const callFastAPIPDFEvaluation = async (studentFilePath, examId) => {
         }
         const formData = new FormData();
         formData.append('file', fs.createReadStream(studentFilePath));
+        const params = new URLSearchParams({ exam_id: examId, strictness, subject });
         const response = await axios.post(
-            `${FASTAPI_BASE}/api/evaluation/evaluate-pdf?exam_id=${examId}`,
+            `${FASTAPI_BASE}/api/evaluation/evaluate-pdf?${params}`,
             formData,
             { headers: { ...formData.getHeaders() }, timeout: 600000 }
         );
@@ -394,7 +396,11 @@ const startEvaluation = async (req, res) => {
                 if (fs.existsSync(studentImagePath)) {
                     if (isMultiQ) {
                         // ── Multi-question PDF path ────────────────────────────────────
-                        const aiResult = await callFastAPIPDFEvaluation(studentImagePath, examIdStr);
+                        const aiResult = await callFastAPIPDFEvaluation(
+                            studentImagePath, examIdStr,
+                            exam.evaluationStrictness || 'moderate',
+                            exam.subject || ''
+                        );
                         if (aiResult && aiResult.success) {
                             percentage = parseFloat(aiResult.percentage.toFixed(2));
                             finalScore = Math.round((percentage / 100) * exam.maxMarks);
@@ -443,7 +449,11 @@ const startEvaluation = async (req, res) => {
                         }
                     } else {
                         // ── Single-question image path ─────────────────────────────────
-                        const aiResult = await callFastAPIEvaluation(studentImagePath, examIdStr);
+                        const aiResult = await callFastAPIEvaluation(
+                            studentImagePath, examIdStr,
+                            exam.evaluationStrictness || 'moderate',
+                            exam.subject || ''
+                        );
 
                         if (aiResult && aiResult.success) {
                             percentage = parseFloat(aiResult.percentage.toFixed(2));

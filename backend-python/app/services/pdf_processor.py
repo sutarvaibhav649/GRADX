@@ -67,11 +67,13 @@ def cleanup_images(image_paths: List[str]):
 
 _Q_RE = re.compile(
     r'(?:^|\n)\s*(?:'
-    r'[Qq]uestion\s*(\d+)'        # "Question 1"
-    r'|[Qq][\.\s]+(\d+)\s*[\.\):]'  # "Q.1:" or "Q 1."
-    r'|[Qq](\d+)\s*[\.\):]'      # "Q1:"
-    r'|(\d+)\s*[\.\)]\s+'        # "1. " or "1) "
-    r'|[Aa]ns(?:wer)?\s*(\d+)'   # "Ans 1" or "Answer 1"
+    r'[Qq]uestion\s*(\d+)'              # "Question 1"
+    r'|[Qq]ues(?:tion)?\.\s*(\d+)'     # "Ques. 1" or "Ques 1"
+    r'|[Qq][\.\s]+(\d+)\s*[\.\):]'     # "Q.1:" or "Q 1."
+    r'|[Qq](\d+)\s*[\.\):\-]'          # "Q1:" or "Q1-"
+    r'|(\d+)\s*[\.\)]\s+'              # "1. " or "1) "
+    r'|[Aa]ns(?:wer)?\s*\.?\s*(\d+)'   # "Ans 1", "Ans. 1", "Answer 1"
+    r'|\((\d+)\)\s*'                    # "(1)"
     r')',
     re.MULTILINE
 )
@@ -155,13 +157,13 @@ def extract_sections_from_text(text_chunk: str, section_names: List[str]) -> Dic
         body_end = headers[idx + 1][1] if idx + 1 < len(headers) else len(text_chunk)
         result[sec] = text_chunk[body_start:body_end].strip()
 
-    # Fallback: distribute text proportionally
+    # Fallback: student wrote a continuous answer with no section labels.
+    # Put the full text into every section so semantic scoring can find relevant
+    # content regardless of where the student placed it, instead of splitting
+    # blindly by character count which puts random text in the wrong sections.
     if all(v == "" for v in result.values()) and text_chunk.strip():
-        chunk = text_chunk.strip()
-        n = len(section_names)
-        size = max(1, len(chunk) // n)
-        for i, s in enumerate(section_names):
-            result[s] = chunk[i * size: (i + 1) * size].strip()
+        for s in section_names:
+            result[s] = text_chunk.strip()
 
     return result
 

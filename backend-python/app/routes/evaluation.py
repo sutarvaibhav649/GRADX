@@ -8,7 +8,7 @@ import json
 
 from app.services.ocr_gemini import extract_student_json, DEFAULT_SECTIONS
 from app.models.model_answer import MODEL_ANSWERS
-from app.services.evaluator import advanced_evaluator
+from app.services.evaluator import AdvancedEvaluator, advanced_evaluator
 
 router = APIRouter(prefix="/api/evaluation", tags=["evaluation"])
 
@@ -194,7 +194,9 @@ async def get_model_answer(
 @router.post("/evaluate-text")
 async def evaluate_text_answer(
     student_answer: Dict[str, Any] = Body(...),
-    exam_id: str = Query(default="default", description="Exam ID")
+    exam_id: str = Query(default="default", description="Exam ID"),
+    strictness: str = Query(default="moderate", description="lenient / moderate / strict"),
+    subject: str = Query(default="", description="Exam subject for context-aware LLM evaluation"),
 ):
     """
     Evaluate a text-based student answer against the uploaded model answer.
@@ -219,12 +221,13 @@ async def evaluate_text_answer(
             if section not in student_answer:
                 student_answer[section] = ""
 
-        # Reconfigure evaluator with this exam's model (safe for sequential requests)
-        advanced_evaluator.auto_configure_from_model(model_answer, question_type="conceptual", cheating_threshold=0.4)
+        # Use a fresh evaluator instance per request to avoid race conditions
+        evaluator = AdvancedEvaluator()
+        evaluator.auto_configure_from_model(model_answer, question_type="conceptual", cheating_threshold=0.4)
 
-        result = advanced_evaluator.evaluate(student_answer, model_answer["Answer"], marks_config)
+        result = evaluator.evaluate(student_answer, model_answer["Answer"], marks_config)
 
-        json_file = advanced_evaluator.save_to_json_file(student_answer, model_answer["Answer"], result)
+        json_file = evaluator.save_to_json_file(student_answer, model_answer["Answer"], result)
 
         return {
             "success": True,
@@ -242,7 +245,9 @@ async def evaluate_text_answer(
 @router.post("/evaluate-image")
 async def evaluate_image_answer(
     file: UploadFile = File(...),
-    exam_id: str = Query(default="default", description="Exam ID")
+    exam_id: str = Query(default="default", description="Exam ID"),
+    strictness: str = Query(default="moderate", description="lenient / moderate / strict"),
+    subject: str = Query(default="", description="Exam subject for context-aware LLM evaluation"),
 ):
     """
     Evaluate a handwritten student answer image against the uploaded model answer.
@@ -289,12 +294,16 @@ async def evaluate_image_answer(
         if low_confidence:
             print(f"  WARNING: Low OCR confidence (total chars: {total_text_len})")
 
-        # Reconfigure evaluator with this exam's model before scoring
-        advanced_evaluator.auto_configure_from_model(model_answer, question_type="conceptual", cheating_threshold=0.4)
+        # Use a fresh evaluator instance per request to avoid race conditions
+        evaluator = AdvancedEvaluator()
+        evaluator.auto_configure_from_model(model_answer, question_type="conceptual", cheating_threshold=0.4)
 
-        result = advanced_evaluator.evaluate(student_data["Answer"], model_answer["Answer"], marks_config)
+        result = evaluator.evaluate(
+            student_data["Answer"], model_answer["Answer"], marks_config,
+            strictness=strictness, subject=subject,
+        )
 
-        json_file = advanced_evaluator.save_to_json_file(student_data["Answer"], model_answer["Answer"], result)
+        json_file = evaluator.save_to_json_file(student_data["Answer"], model_answer["Answer"], result)
 
         return {
             "success": True,
@@ -562,7 +571,9 @@ async def restore_model_pdf(
 @router.post("/evaluate-pdf")
 async def evaluate_student_pdf(
     file: UploadFile = File(...),
-    exam_id: str = Query(default="default")
+    exam_id: str = Query(default="default"),
+    strictness: str = Query(default="moderate", description="lenient / moderate / strict"),
+    subject: str = Query(default="", description="Exam subject for context-aware LLM evaluation"),
 ):
     """
     Evaluate a multi-question student answer (PDF or image).
@@ -617,10 +628,15 @@ async def evaluate_student_pdf(
             student_q = student_answers.get(q_num, {})
             model_q = model_answers.get(q_num, {})
 
-            advanced_evaluator.auto_configure_from_model(
+            # Fresh evaluator instance per question to avoid shared-state races
+            evaluator = AdvancedEvaluator()
+            evaluator.auto_configure_from_model(
                 {"Answer": model_q, "topic": f"Q{q_num}"}
             )
-            q_result = advanced_evaluator.evaluate(student_q, model_q, marks_config)
+            q_result = evaluator.evaluate(
+                student_q, model_q, marks_config,
+                strictness=strictness, subject=subject,
+            )
             q_results[q_num] = q_result
             total_marks += q_result["total_marks"]
             total_max += q_result["max_marks"]

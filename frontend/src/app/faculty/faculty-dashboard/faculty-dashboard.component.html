@@ -569,18 +569,20 @@
                                 </div>
                             </div>
                             <div class="answer-right">
-                                <button style="font-size:0.8rem;padding:7px 20px;border-radius:10px;border: 0px;cursor: pointer;"
-                                    [style.background]="exam.status === 'completed' ? '#d4edda' : '#fff3cd'"
-                                    [style.color]="exam.status === 'completed' ? '#155724' : '#856404'"
+                                <button style="font-size:0.8rem;padding:7px 20px;border-radius:10px;border: 0px;cursor: not-allowed;opacity:0.5;"
+                                    [style.background]="'#fff3cd'"
+                                    [style.color]="'#856404'"
                                     [style.display]="exam.status === 'completed' ? 'none' : 'inline'"
-                                    (click)="manualEvaluate()">
+                                    title="Manual evaluation — coming soon"
+                                    disabled>
                                     Evaluate
                                 </button>
-                                <button style="font-size:0.8rem;padding:7px 20px;border-radius:10px;border: 0px;cursor: pointer;"
-                                    [style.background]="exam.status === 'completed' ? '#d4edda' : '#fff3cd'"
-                                    [style.color]="exam.status === 'completed' ? '#155724' : '#856404'"
+                                <button style="font-size:0.8rem;padding:7px 20px;border-radius:10px;border: 0px;cursor: not-allowed;opacity:0.5;"
+                                    [style.background]="'#d4edda'"
+                                    [style.color]="'#155724'"
                                     [style.display]="exam.status === 'completed' ? 'inline' : 'none'"
-                                    (click)="viewResults()">
+                                    title="View results — coming soon"
+                                    disabled>
                                     View Results
                                 </button>
                                 <button style="font-size:0.8rem;padding:7px 20px;border-radius:10px;border: 0px;cursor: pointer;"

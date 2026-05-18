@@ -42,6 +42,7 @@ export class LoginComponent {
       },
       error: (err) => {
         this.isLoading = false;
+        this.toastService.show('error', err.error?.message || 'Login failed. Check your email, password and role.');
       }
     });
   }

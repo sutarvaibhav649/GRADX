@@ -58,15 +58,16 @@ class AdvancedEvaluator:
         for section, text in answer_dict.items():
             if text and isinstance(text, str):
                 words = text.lower().split()
-                important = [w for w in words if len(w) > 4 and w not in self.stop_words]
-                key_concepts[section] = list(dict.fromkeys(important))[:8]
-                for w in important[:5]:
+                # len > 2 catches short but important technical terms: CPU, RAM, API, SQL, AI, ML
+                important = [w for w in words if len(w) > 2 and w not in self.stop_words]
+                key_concepts[section] = list(dict.fromkeys(important))[:15]
+                for w in important[:8]:
                     required_terms.add(w)
-        
+
         self.configure(
             topic=topic,
             key_concepts=key_concepts,
-            required_terms=list(required_terms)[:15],
+            required_terms=list(required_terms)[:20],
             question_type=question_type,
             cheating_threshold=cheating_threshold
         )
@@ -81,7 +82,7 @@ class AdvancedEvaluator:
             'question_type': question_type,
             'cheating_threshold': cheating_threshold
         }
-        print(f"✅ Evaluator configured for: {topic}")
+        print(f"[OK] Evaluator configured for: {topic}")
     
     def semantic_similarity(self, text1: str, text2: str) -> float:
         if not text1 or not text2:
@@ -162,7 +163,9 @@ class AdvancedEvaluator:
             coverage_scores.append(max(similarities) if similarities else 0.0)
         coverage_score = float(np.mean(coverage_scores)) if coverage_scores else 0.0
         
-        length_ratio = min(1.0, len(student_text) / max(1, len(model_text)))
+        # A student who writes 60% of the model answer length scores full length_ratio.
+        # This stops penalising concise-but-correct answers vs verbose model answers.
+        length_ratio = min(1.0, len(student_text) / max(1, len(model_text) * 0.6))
         depth_score = (coverage_score * 0.7) + (length_ratio * 0.3)
         
         return {
@@ -171,59 +174,102 @@ class AdvancedEvaluator:
             'explanation_quality': float(round(length_ratio, 3))
         }
     
-    def evaluate_section(self, section: str, student_text: str, model_text: str, max_marks: float) -> Dict:
-        semantic_sim = self.semantic_similarity(student_text, model_text)
-        coherence = self.coherence_score(student_text)
-        coverage = self.concept_coverage(section, student_text)
-        depth = self.calculate_semantic_depth(student_text, model_text)
-        cheating = self.detect_keyword_stuffing(student_text, section)
-        
-        raw_score = (semantic_sim * 0.5) + (coverage * 0.25) + (depth['depth_score'] * 0.25)
-        final_raw = raw_score * coherence
-        
-        if cheating['is_suspicious'] and cheating['keyword_density'] > 0.6:
-            final_raw *= 0.8
-        
+    def evaluate_section(self, section: str, student_text: str, model_text: str,
+                         max_marks: float, strictness: str = "moderate",
+                         subject: str = "") -> Dict:
         safe_max = float(max_marks) if max_marks and max_marks > 0 else 1.0
-        marks = round(final_raw * safe_max, 1)
-        marks = max(0.0, min(marks, safe_max))
+
+        # Guard: blank answer — skip all expensive calls
+        if not student_text or not student_text.strip():
+            return {
+                'marks_awarded': 0.0, 'max_marks': round(safe_max, 1), 'percentage': 0.0,
+                'scores': {'semantic_similarity': 0.0, 'coherence': 0.0,
+                           'concept_coverage': 0.0, 'depth_score': 0.0,
+                           'llm_marks': None, 'local_marks': 0.0},
+                'llm_evaluation': None,
+                'cheating_detection': {'is_suspicious': False, 'keyword_density': 0.0,
+                                       'short_sentence_ratio': 0.0, 'repetition_score': 0.0},
+                'student_text': student_text, 'model_text': model_text
+            }
+
+        # ── Local scoring (fast, no API cost) ────────────────────────────────
+        semantic_sim = self.semantic_similarity(student_text, model_text)
+        coherence    = self.coherence_score(student_text)
+        coverage     = self.concept_coverage(section, student_text)
+        depth        = self.calculate_semantic_depth(student_text, model_text)
+        cheating     = self.detect_keyword_stuffing(student_text, section)
+
+        local_raw = (semantic_sim * 0.5) + (coverage * 0.25) + (depth['depth_score'] * 0.25)
+        local_raw *= coherence
+        if cheating['keyword_density'] > 0.75:
+            local_raw *= 0.8
+        local_marks = round(min(local_raw * safe_max, safe_max), 1)
+
+        # ── LLM scoring (primary accuracy layer) ─────────────────────────────
+        # Skip LLM only for answers that are clearly irrelevant (semantic < 0.08)
+        # or extremely short (< 15 chars), to save API cost.
+        llm_result = None
+        llm_marks  = None
+        try:
+            from app.services.ocr_gemini import evaluate_section_with_llm
+            if len(student_text.strip()) >= 15 and semantic_sim >= 0.08:
+                llm_result = evaluate_section_with_llm(
+                    section, student_text, model_text, safe_max, strictness, subject
+                )
+                if llm_result and llm_result.get('marks_awarded', -1) >= 0:
+                    llm_marks = float(llm_result['marks_awarded'])
+        except Exception as e:
+            print(f"LLM evaluation skipped for section '{section}': {e}")
+
+        # ── Blend: LLM 70 % + local 30 % (fall back to 100 % local on LLM error) ──
+        if llm_marks is not None:
+            final_marks = round((llm_marks * 0.7) + (local_marks * 0.3), 1)
+        else:
+            final_marks = local_marks
+        final_marks = max(0.0, min(final_marks, safe_max))
 
         return {
-            'marks_awarded': round(marks, 1),
+            'marks_awarded': round(final_marks, 1),
             'max_marks': round(safe_max, 1),
-            'percentage': float(round((marks / safe_max) * 100, 1)),
+            'percentage': float(round((final_marks / safe_max) * 100, 1)),
             'scores': {
                 'semantic_similarity': float(round(semantic_sim, 3)),
-                'coherence': float(round(coherence, 3)),
-                'concept_coverage': float(round(coverage, 3)),
-                'depth_score': float(depth['depth_score'])
+                'coherence':           float(round(coherence, 3)),
+                'concept_coverage':    float(round(coverage, 3)),
+                'depth_score':         float(depth['depth_score']),
+                'llm_marks':           float(llm_marks) if llm_marks is not None else None,
+                'local_marks':         float(local_marks),
             },
+            'llm_evaluation': llm_result,
             'cheating_detection': cheating,
             'student_text': student_text,
             'model_text': model_text
         }
     
-    def evaluate(self, student_answer: Dict, model_answer: Dict, marks_per_section: Dict = None) -> Dict:
+    def evaluate(self, student_answer: Dict, model_answer: Dict,
+                 marks_per_section: Dict = None,
+                 strictness: str = "moderate", subject: str = "") -> Dict:
         if marks_per_section is None:
             marks_per_section = {"Definition": 2, "Body": 4, "Conclusion": 2}
-        
+
         if not self.current_config:
             self.auto_configure_from_model({"Answer": model_answer, "topic": "Deep Learning"})
-        
+
         results = {}
         total_marks = 0
         max_total = 0
 
-        # Iterate over whatever sections are defined (supports any custom sections)
         for section, raw_max in marks_per_section.items():
             max_marks = float(raw_max) if raw_max and float(raw_max) > 0 else 0.0
             if max_marks <= 0:
-                continue  # skip zero-mark sections to avoid division-by-zero
+                continue
             result = self.evaluate_section(
                 section,
                 student_answer.get(section, ""),
                 model_answer.get(section, ""),
-                max_marks
+                max_marks,
+                strictness=strictness,
+                subject=subject,
             )
             results[section] = result
             total_marks += result['marks_awarded']
@@ -232,8 +278,8 @@ class AdvancedEvaluator:
         overall_percentage = round((total_marks / max_total) * 100, 1) if max_total > 0 else 0.0
         
         evaluation_result = {
-            'total_marks': int(total_marks),
-            'max_marks': int(max_total),
+            'total_marks': round(total_marks, 1),
+            'max_marks': round(max_total, 1),
             'percentage': float(overall_percentage),
             'section_scores': results,
             'feedback': self._generate_feedback(results),
@@ -248,24 +294,43 @@ class AdvancedEvaluator:
     
     def _generate_feedback(self, results: Dict) -> Dict:
         feedback = {'strengths': [], 'improvements': [], 'warnings': []}
-        
+
         for section, data in results.items():
             max_m = data.get('max_marks') or 1
             marks_pct = (data['marks_awarded'] / max_m) * 100
-            
+
+            llm_eval          = data.get('llm_evaluation') or {}
+            reasoning         = llm_eval.get('reasoning', '')
+            concepts_covered  = llm_eval.get('concepts_covered', [])
+            concepts_missing  = llm_eval.get('concepts_missing', [])
+
             if marks_pct >= 75:
-                feedback['strengths'].append(f"✅ {section}: Excellent understanding")
+                msg = f"{section}: Excellent understanding"
+                if concepts_covered:
+                    msg += f" ({', '.join(concepts_covered[:2])})"
+                feedback['strengths'].append(f"✅ {msg}")
             elif marks_pct >= 50:
-                feedback['strengths'].append(f"👍 {section}: Good understanding")
+                msg = f"{section}: Good understanding"
+                if reasoning:
+                    msg += f" — {reasoning}"
+                feedback['strengths'].append(f"👍 {msg}")
             else:
-                feedback['improvements'].append(f"📚 {section}: Needs improvement")
-            
-            if data['scores']['concept_coverage'] < 0.3:
+                msg = f"{section}: Needs improvement"
+                if reasoning:
+                    msg += f" — {reasoning}"
+                feedback['improvements'].append(f"📚 {msg}")
+
+            # Use LLM-identified missing concepts if available, else fall back to local coverage
+            if concepts_missing:
+                feedback['improvements'].append(
+                    f"🔑 {section}: Missing — {', '.join(concepts_missing[:3])}"
+                )
+            elif data['scores']['concept_coverage'] < 0.3 and not llm_eval:
                 feedback['improvements'].append(f"🔑 {section}: Missing key concepts")
-            
+
             if data['cheating_detection']['is_suspicious']:
                 feedback['warnings'].append(f"⚠️ {section}: High keyword density detected")
-        
+
         return feedback
     
     def save_to_json_file(self, student_answer: Dict, model_answer: Dict, evaluation_result: Dict, filename: str = None):

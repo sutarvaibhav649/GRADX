@@ -92,8 +92,8 @@ export class SignupComponent implements OnInit {
         this.router.navigate([`/${userRole}/dashboard`]);
       },
       error: (err: any) => {
-        console.log('Signup error:', err);
         this.isLoading = false;
+        this.toastService.show('error', err.error?.message || 'Signup failed. Please try again.');
       }
     });
   }
