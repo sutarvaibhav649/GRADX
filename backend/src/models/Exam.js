@@ -81,10 +81,32 @@ const examSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Single-question mode: flat list of sections (backward-compatible)
     questions: [
       {
         sectionName: { type: String, required: true, trim: true },
         maxMarks: { type: Number, required: true, min: 0 },
+      },
+    ],
+    // Multi-question mode: each question has its own sections
+    isMultiQuestion: {
+      type: Boolean,
+      default: false,
+    },
+    questionSet: [
+      {
+        questionNumber: { type: Number, required: true },
+        questionText:   { type: String, default: '' },
+        sections: [
+          {
+            sectionName: { type: String, required: true, trim: true },
+            maxMarks:    { type: Number, required: true, min: 0 },
+          },
+        ],
+        modelAnswerExtracted: {
+          type: mongoose.Schema.Types.Mixed,
+          default: {},
+        },
       },
     ],
     modelAnswerUploadedToAI: {

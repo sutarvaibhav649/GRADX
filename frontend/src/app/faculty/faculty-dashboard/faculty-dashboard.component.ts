@@ -15,7 +15,8 @@ import { environment } from '../../../environments/environment';
   styleUrl: './faculty-dashboard.component.css',
 })
 export class FacultyDashboardComponent implements OnInit, OnDestroy {
-  finalizeS!: Subscription;
+  private finalizeS?: Subscription;
+  private progressInterval?: ReturnType<typeof setInterval>;
 
   uploadForm!: FormGroup;
 
@@ -43,11 +44,59 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
   currentEvaluationData: any = null;
   currentSectionNames: string[] = [];
 
-  // Phase 1.1: Custom question sections
+  // Phase 1.1: Custom question sections (single-question mode)
   selectedSections: { name: string; marks: number }[] = [];
+
+  // Multi-question mode
+  isMultiQuestion = false;
+  questionSet: Array<{ questionText: string; sections: { name: string; marks: number }[] }> = [];
 
   get totalSectionMarks(): number {
     return this.selectedSections.reduce((sum, s) => sum + (s.marks || 0), 0);
+  }
+
+  get totalQuestionSetMarks(): number {
+    return this.questionSet.reduce(
+      (sum, q) => sum + q.sections.reduce((s2, sec) => s2 + (sec.marks || 0), 0), 0
+    );
+  }
+
+  toggleMultiQuestion() {
+    this.isMultiQuestion = !this.isMultiQuestion;
+    if (this.isMultiQuestion && this.questionSet.length === 0) {
+      this.addQuestion();
+    }
+    this.syncMaxMarks();
+  }
+
+  addQuestion() {
+    this.questionSet.push({ questionText: '', sections: [{ name: '', marks: 0 }] });
+    this.syncMaxMarks();
+  }
+
+  removeQuestion(index: number) {
+    this.questionSet.splice(index, 1);
+    this.syncMaxMarks();
+  }
+
+  addQuestionSection(qIdx: number) {
+    this.questionSet[qIdx].sections.push({ name: '', marks: 0 });
+    this.syncMaxMarks();
+  }
+
+  removeQuestionSection(qIdx: number, sIdx: number) {
+    this.questionSet[qIdx].sections.splice(sIdx, 1);
+    this.syncMaxMarks();
+  }
+
+  syncMaxMarks() {
+    if (this.isMultiQuestion) {
+      if (this.totalQuestionSetMarks > 0) {
+        this.uploadForm.get('maxMarks')?.setValue(this.totalQuestionSetMarks);
+      }
+    } else if (this.selectedSections.length > 0) {
+      this.uploadForm.get('maxMarks')?.setValue(this.totalSectionMarks);
+    }
   }
 
   addSection() {
@@ -79,13 +128,15 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.finalizeS?.unsubscribe();
+    if (this.progressInterval) clearInterval(this.progressInterval);
   }
 
   ngOnInit() {
+    this.initForm();
     this.loadDashboard();
   }
 
-  loadDashboard() {
+  private initForm() {
     this.uploadForm = this.fb.group({
       academicYear: ['', Validators.required],
       year: ['', Validators.required],
@@ -98,15 +149,16 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
       enableCrossCheck: [true],
       evaluationStrictness: ['moderate']
     });
+  }
+
+  loadDashboard() {
     this.facultyService.getDashboard().subscribe({
       next: (res) => {
-        console.log('Dashboard data:', res);
         this.stats = res.data.stats;
         this.recentExams = res.data.recentExams;
-        this.toastService.show('success', 'Dashboard data loaded successfully.');
       },
       error: (err: any) => {
-        console.error('Error loading dashboard:', err);
+        this.toastService.show('error', 'Failed to load dashboard data.');
       }
     });
   }
@@ -202,24 +254,36 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.isSubmitting = true;
-    this.showProgressModal = true;
-    
-    this.totalPapers = this.selectedStudentPapers.length;
-    this.processedPapers = 0;
-    this.successfulPapers = 0;
-    this.progressPercentage = 0;
-    this.evaluationLogs = [];
-    this.addLogMessage('Starting evaluation process...', 'info');
-
-    // Validate sections if any are defined
-    if (this.selectedSections.length > 0) {
+    // Validate question config BEFORE setting isSubmitting so form is never stuck
+    if (this.isMultiQuestion) {
+      if (this.questionSet.length === 0) {
+        this.toastService.show('error', 'Add at least one question in multi-question mode.');
+        return;
+      }
+      for (const q of this.questionSet) {
+        const invalid = q.sections.filter(s => !s.name.trim() || s.marks <= 0);
+        if (invalid.length > 0) {
+          this.toastService.show('error', 'Each section must have a name and marks greater than 0.');
+          return;
+        }
+      }
+    } else if (this.selectedSections.length > 0) {
       const invalidSections = this.selectedSections.filter(s => !s.name.trim() || s.marks <= 0);
       if (invalidSections.length > 0) {
         this.toastService.show('error', 'Each section must have a name and marks greater than 0.');
         return;
       }
     }
+
+    this.isSubmitting = true;
+    this.showProgressModal = true;
+
+    this.totalPapers = this.selectedStudentPapers.length;
+    this.processedPapers = 0;
+    this.successfulPapers = 0;
+    this.progressPercentage = 0;
+    this.evaluationLogs = [];
+    this.addLogMessage('Starting evaluation process...', 'info');
 
     const fd = new FormData();
     const raw = this.uploadForm.getRawValue();
@@ -229,7 +293,15 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
       fd.append('studentEmails', paper.email.trim());
     });
     fd.append('modelAnswer', this.selectedModelAnswer!);
-    if (this.selectedSections.length > 0) {
+    if (this.isMultiQuestion && this.questionSet.length > 0) {
+      // Multi-question: send questionSet JSON
+      const qsPayload = this.questionSet.map((q, idx) => ({
+        number: idx + 1,
+        text: q.questionText.trim(),
+        sections: q.sections.map(s => ({ name: s.name.trim(), marks: s.marks }))
+      }));
+      fd.append('questionSet', JSON.stringify(qsPayload));
+    } else if (this.selectedSections.length > 0) {
       fd.append('questions', JSON.stringify(this.selectedSections));
     }
 
@@ -279,7 +351,7 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
           const enableCrossCheck = this.uploadForm.get('enableCrossCheck')?.value;
           
           if (enableCrossCheck && evalRes.data?.results) {
-            const backendBase = environment.apiUrl.replace('/api', '');
+            const backendBase = environment.backendUrl;
             this.crossCheckPapers = evalRes.data.results.map((result: any) => {
               const extractedAnswer = result.extractedAnswer || {};
               const aiDetails = result.aiEvaluationDetails || {};
@@ -311,14 +383,12 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
               };
             });
             
-            console.log('Cross-check papers with extracted data:', this.crossCheckPapers);
-            
             this.currentPaperTotal = this.crossCheckPapers.length;
             this.currentPaperIndex = 0;
             this.showCrossCheckModal = true;
             this.loadCurrentPaperForCrossCheck();
           } else if (enableCrossCheck) {
-            this.loadMockEvaluationData();
+            this.toastService.show('warn', 'Evaluation completed but no results were returned for cross-check.');
           } else {
             this.toastService.show('success', evalRes.message || 'Evaluation completed!');
           }
@@ -336,65 +406,11 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadMockEvaluationData() {
-    const mockEvaluation = {
-      success: true,
-      student_extracted: {
-        question_No: "1",
-        Answer: {
-          Definition: "Deep Learning is a type of Machine Learning with multiple layers",
-          Body: "It has input, hidden, and output layers. The network learns features from data automatically.",
-          Conclusion: "Used in image recognition and language processing."
-        }
-      },
-      evaluation: {
-        total_marks: 3,
-        max_marks: 7,
-        percentage: 42.9,
-        section_scores: {
-          Definition: {
-            marks_awarded: 1,
-            max_marks: 2,
-            percentage: 50.0,
-            scores: { semantic_similarity: 0.689, coherence: 1.0, concept_coverage: 0.667, depth_score: 0.777 },
-            cheating_detection: { is_suspicious: false, keyword_density: 0.3 }
-          },
-          Body: {
-            marks_awarded: 1,
-            max_marks: 3,
-            percentage: 33.3,
-            scores: { semantic_similarity: 0.6, coherence: 0.8, concept_coverage: 0.0, depth_score: 0.639 },
-            cheating_detection: { is_suspicious: false, keyword_density: 0.0 }
-          },
-          Conclusion: {
-            marks_awarded: 1,
-            max_marks: 2,
-            percentage: 50.0,
-            scores: { semantic_similarity: 0.383, coherence: 1.0, concept_coverage: 0.2, depth_score: 0.527 },
-            cheating_detection: { is_suspicious: false, keyword_density: 0.143 }
-          }
-        },
-        feedback: {
-          strengths: ["👍 Definition: Good understanding", "👍 Conclusion: Good understanding"],
-          improvements: ["📚 Body: Needs improvement", "🔑 Body: Missing key concepts", "🔑 Conclusion: Missing key concepts"],
-          warnings: []
-        },
-        config_used: "Extracted Model Answer"
-      },
-      saved_to_json: "evaluation_20260515_210655.json"
-    };
-    
-    this.crossCheckPapers = [mockEvaluation];
-    this.currentPaperTotal = this.crossCheckPapers.length;
-    this.currentPaperIndex = 0;
-    this.showCrossCheckModal = true;
-    this.loadCurrentPaperForCrossCheck();
-  }
-
   private simulateProgress() {
     let progress = 0;
-    const interval = setInterval(() => {
-      if (progress < 100 && this.showProgressModal) {
+    if (this.progressInterval) clearInterval(this.progressInterval);
+    this.progressInterval = setInterval(() => {
+      if (progress < 90 && this.showProgressModal) {
         progress += 10;
         this.progressPercentage = progress;
         this.processedPapers = Math.floor((progress / 100) * this.totalPapers);
@@ -402,7 +418,8 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
           this.addLogMessage(`Processing papers... ${progress}% complete`, 'info');
         }
       } else {
-        clearInterval(interval);
+        clearInterval(this.progressInterval);
+        this.progressInterval = undefined;
       }
     }, 800);
   }
@@ -423,6 +440,8 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
     this.selectedStudentPapers = [];
     this.selectedModelAnswer = null;
     this.selectedSections = [];
+    this.questionSet = [];
+    this.isMultiQuestion = false;
   }
 
   loadCurrentPaperForCrossCheck() {
@@ -443,8 +462,6 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
   private updateCrossCheckModal(paper: any) {
     const evaluation = paper.evaluation || {};
     const extracted = paper.student_extracted?.Answer || {};
-
-    console.log('Updating modal with:', { evaluation, extracted });
 
     // Phase 3.4: Show/hide low OCR confidence warning banner
     let bannerEl = document.getElementById('ocrConfidenceBanner');
@@ -618,7 +635,7 @@ if (feedbackContent && evaluation.feedback) {
                     <strong style="color:#721c24;">⚠️ Warnings</strong>
                 </div>
                 <ul style="margin: 0 0 0 20px; color: #721c24; padding-left: 0;">
-                    ${evaluation.feedback.warnings.map((w: string) => `<li style="margin: 4px 0; list-style: none;">! ${w}</li>`).join('')}
+                    ${evaluation.feedback.warnings.map((w: string) => `<li style="margin: 4px 0; list-style: none;">! ${w.replace(/[⚠️]/gu, '').trim()}</li>`).join('')}
                 </ul>
             </div>
         `;
@@ -687,9 +704,8 @@ if (feedbackContent && evaluation.feedback) {
   }
 
   updateManualScore() {
-    const sections = this.currentSectionNames.length > 0
-      ? this.currentSectionNames
-      : ['Definition', 'Body', 'Conclusion'];
+    if (this.currentSectionNames.length === 0) return;
+    const sections = this.currentSectionNames;
     let totalMarks = 0;
     let maxMarks = 0;
 
@@ -761,9 +777,7 @@ if (feedbackContent && evaluation.feedback) {
     const paper = this.crossCheckPapers[this.currentPaperIndex];
     const resultId = paper?.resultId;
 
-    const sections = this.currentSectionNames.length > 0
-      ? this.currentSectionNames
-      : ['Definition', 'Body', 'Conclusion'];
+    const sections = this.currentSectionNames;
     const questionWiseMarks: any[] = [];
     let totalMarks = 0;
 
@@ -805,9 +819,14 @@ if (feedbackContent && evaluation.feedback) {
     }
   }
 
-  closeProgressModal() { 
+  closeProgressModal() {
     this.showProgressModal = false;
+    this.isSubmitting = false;
     this.evaluationLogs = [];
+    if (this.progressInterval) {
+      clearInterval(this.progressInterval);
+      this.progressInterval = undefined;
+    }
   }
   
   closeCrossCheckModal() { 

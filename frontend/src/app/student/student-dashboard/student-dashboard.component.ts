@@ -39,9 +39,10 @@ export class StudentDashboardComponent implements OnInit {
       next: (res) => {
         this.stats = res.data.stats;
         this.results = res.data.recentResults;
-        this.toastService.show('success', 'Student dashboard loaded.');
       },
-      error: () => {}
+      error: () => {
+        this.toastService.show('error', 'Failed to load dashboard. Please refresh.');
+      }
     });
   }
 
@@ -95,8 +96,7 @@ export class StudentDashboardComponent implements OnInit {
   get studentImageUrl(): string {
     const filePath = this.selectedResult?.studentAnswerSheet?.filePath || '';
     if (!filePath) return '';
-    const base = environment.apiUrl.replace('/api', '');
-    return `${base}${filePath}`;
+    return `${environment.backendUrl}${filePath}`;
   }
 
   get lowConfidence(): boolean {

@@ -106,26 +106,53 @@ const createExam = async (req, res) => {
       });
     }
 
-    // Parse optional questions/sections array
-    let questions = [];
-    if (req.body.questions) {
+    // ── Parse question config ────────────────────────────────────────────────
+    let questions = [];       // single-question mode: flat sections
+    let questionSet = [];     // multi-question mode: questions with own sections
+    let isMultiQuestion = false;
+
+    // Multi-question mode: questionSet JSON [{ number, text, sections:[{name,marks}] }]
+    if (req.body.questionSet) {
+      try {
+        const parsed = JSON.parse(req.body.questionSet);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          questionSet = parsed.map(q => ({
+            questionNumber: Number(q.number || q.questionNumber || 1),
+            questionText:   String(q.text || q.questionText || '').trim(),
+            sections: (q.sections || [])
+              .map(s => ({
+                sectionName: String(s.name || s.sectionName || '').trim(),
+                maxMarks:    Number(s.marks ?? s.maxMarks ?? 0),
+              }))
+              .filter(s => s.sectionName && s.maxMarks > 0),
+          })).filter(q => q.sections.length > 0);
+          isMultiQuestion = questionSet.length > 0;
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    // Single-question mode: questions JSON [{ name, marks }]
+    if (!isMultiQuestion && req.body.questions) {
       try {
         const parsed = JSON.parse(req.body.questions);
         if (Array.isArray(parsed) && parsed.length > 0) {
           questions = parsed.map(q => ({
             sectionName: String(q.name || q.sectionName || '').trim(),
-            maxMarks: Number(q.marks ?? q.maxMarks ?? 0)
+            maxMarks:    Number(q.marks ?? q.maxMarks ?? 0),
           })).filter(q => q.sectionName && q.maxMarks > 0);
         }
-      } catch (e) {
-        // ignore malformed questions — fall back to default sections
-      }
+      } catch (e) { /* ignore */ }
     }
 
-    // When custom sections are provided, override maxMarks with their sum
-    const effectiveMaxMarks = questions.length > 0
-      ? questions.reduce((sum, q) => sum + q.maxMarks, 0)
-      : marks;
+    // Effective max marks = sum of all section marks
+    let effectiveMaxMarks = marks;
+    if (isMultiQuestion) {
+      effectiveMaxMarks = questionSet.reduce(
+        (sum, q) => sum + q.sections.reduce((s2, sec) => s2 + sec.maxMarks, 0), 0
+      ) || marks;
+    } else if (questions.length > 0) {
+      effectiveMaxMarks = questions.reduce((sum, q) => sum + q.maxMarks, 0);
+    }
 
     const exam = await Exam.create({
       facultyId: req.user._id,
@@ -137,6 +164,8 @@ const createExam = async (req, res) => {
       maxMarks: effectiveMaxMarks,
       subject,
       questions,
+      isMultiQuestion,
+      questionSet,
       studentAnswerSheets: studentPapers,
       modelAnswer,
       evaluationMode,
