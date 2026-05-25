@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { UpperCasePipe, CommonModule, DecimalPipe } from '@angular/common';
 import { AuthService } from '../../shared/services/auth.service';
 import { StudentService } from '../../shared/services/student.service';
@@ -8,7 +8,7 @@ import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-student-dashboard',
-  imports: [UpperCasePipe, CommonModule, DecimalPipe],
+  imports: [UpperCasePipe, CommonModule, DecimalPipe, RouterLink],
   templateUrl: './student-dashboard.component.html',
   styleUrl: './student-dashboard.component.css',
 })

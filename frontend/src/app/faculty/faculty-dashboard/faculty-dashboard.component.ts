@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { UpperCasePipe, CommonModule } from '@angular/common';
 import { AuthService } from '../../shared/services/auth.service';
 import { FacultyService } from '../../shared/services/faculty.service';
@@ -10,7 +10,7 @@ import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-faculty-dashboard',
-  imports: [ReactiveFormsModule, FormsModule, UpperCasePipe, CommonModule],
+  imports: [ReactiveFormsModule, FormsModule, UpperCasePipe, CommonModule, RouterLink],
   templateUrl: './faculty-dashboard.component.html',
   styleUrl: './faculty-dashboard.component.css',
 })

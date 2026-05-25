@@ -3,6 +3,7 @@ const {
   getDashboard,
   getAllUsers,
   getUserById,
+  createUser,
   updateUser,
   deleteUser,
   getAllExams,
@@ -17,6 +18,7 @@ router.use(protect, authorize('admin'));
 
 router.get('/dashboard', getDashboard);
 router.get('/users', getAllUsers);
+router.post('/users', createUser);
 router.get('/users/:id', getUserById);
 router.put('/users/:id', updateUser);
 router.delete('/users/:id', deleteUser);

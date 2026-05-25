@@ -79,4 +79,20 @@ export class AuthService {
   getMe() {
     return this.http.get<any>(`${this.api}/auth/me`);
   }
+
+  updateProfile(data: any) {
+    return this.http.put<any>(`${this.api}/auth/profile`, data).pipe(
+      tap(res => {
+        const user = res.user || res.data;
+        if (user) {
+          localStorage.setItem('gradx_user', JSON.stringify(user));
+          this.userSubject.next(user);
+        }
+      })
+    );
+  }
+
+  changePassword(currentPassword: string, newPassword: string) {
+    return this.http.put<any>(`${this.api}/auth/change-password`, { currentPassword, newPassword });
+  }
 }

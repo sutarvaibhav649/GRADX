@@ -95,6 +95,50 @@ const getUserById = async (req, res) => {
   }
 };
 
+// POST /api/admin/users
+const createUser = async (req, res) => {
+  try {
+    const { fullName, email, password, role, idNumber, department, sendProdUpdate, isActive } = req.body;
+    const validRoles = ['student', 'faculty', 'admin'];
+
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ success: false, message: 'Invalid role specified' });
+    }
+
+    if (role !== 'admin' && !department) {
+      return res.status(400).json({ success: false, message: 'Department is required for non-admin users' });
+    }
+
+    const [existingEmail, existingId] = await Promise.all([
+      User.findOne({ email }),
+      User.findOne({ idNumber }),
+    ]);
+
+    if (existingEmail) {
+      return res.status(409).json({ success: false, message: 'Email already registered' });
+    }
+
+    if (existingId) {
+      return res.status(409).json({ success: false, message: 'ID number already in use' });
+    }
+
+    const user = await User.create({
+      fullName,
+      email,
+      password,
+      role,
+      idNumber,
+      department: role === 'admin' ? undefined : department,
+      sendProdUpdate: Boolean(sendProdUpdate),
+      isActive: isActive !== false,
+    });
+
+    res.status(201).json({ success: true, data: user.toPublicJSON() });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // PUT /api/admin/users/:id
 const updateUser = async (req, res) => {
   try {
@@ -183,4 +227,4 @@ const getAllResults = async (req, res) => {
   }
 };
 
-module.exports = { getDashboard, getAllUsers, getUserById, updateUser, deleteUser, getAllExams, getAllResults };
+module.exports = { getDashboard, getAllUsers, getUserById, createUser, updateUser, deleteUser, getAllExams, getAllResults };
