@@ -8,20 +8,20 @@ const getDashboard = async (req, res) => {
       .populate('examId', 'subject examType department academicYear maxMarks semester year')
       .sort({ createdAt: -1 });
 
-    const finalized = results.filter((r) => r.evaluationStatus === 'finalized');
+    const evaluated = results.filter((r) => r.evaluationStatus !== 'pending');
     const avgScore =
-      finalized.length > 0
-        ? (finalized.reduce((sum, r) => sum + r.percentage, 0) / finalized.length).toFixed(2)
+      evaluated.length > 0
+        ? (evaluated.reduce((sum, r) => sum + (Number(r.percentage) || 0), 0) / evaluated.length).toFixed(2)
         : 0;
-    const topPerformances = finalized.filter((r) => r.percentage >= 75).length;
+    const topPerformances = evaluated.filter((r) => (Number(r.percentage) || 0) >= 75).length;
 
-    const recentResults = results.slice(0, 5);
+    const recentResults = evaluated.slice(0, 5);
 
     res.status(200).json({
       success: true,
       data: {
         stats: {
-          totalEvaluated: finalized.length,
+          totalEvaluated: evaluated.length,
           averageScore: parseFloat(avgScore),
           topPerformances,
           pendingResults: results.filter((r) => r.evaluationStatus === 'pending').length,
@@ -48,7 +48,7 @@ const getMyResults = async (req, res) => {
       ? (await Exam.find(examFilter).select('_id')).map((e) => e._id)
       : null;
 
-    const filter = { studentId: req.user._id };
+    const filter = { studentId: req.user._id, evaluationStatus: { $ne: 'pending' } };
     if (examIds) filter.examId = { $in: examIds };
 
     const [results, total] = await Promise.all([
@@ -79,6 +79,7 @@ const getResultById = async (req, res) => {
     }).populate('examId', 'subject examType department academicYear maxMarks semester year evaluationMode');
 
     if (!result) return res.status(404).json({ success: false, message: 'Result not found' });
+    if (!result.examId) return res.status(404).json({ success: false, message: 'Exam details not found for this result' });
 
     // Class stats: avg, rank, total students evaluated in the same exam
     const classResults = await EvaluationResult.find({
@@ -86,17 +87,21 @@ const getResultById = async (req, res) => {
       evaluationStatus: { $ne: 'pending' },
     }).select('finalScore percentage studentId');
 
+    const classPercentages = classResults
+      .map((r) => Number(r.percentage))
+      .filter((percentage) => !Number.isNaN(percentage));
     const classAvg =
-      classResults.length > 0
+      classPercentages.length > 0
         ? parseFloat(
-            (classResults.reduce((s, r) => s + r.percentage, 0) / classResults.length).toFixed(2)
+            (classPercentages.reduce((sum, percentage) => sum + percentage, 0) / classPercentages.length).toFixed(2)
           )
         : 0;
 
+    const resultPercentage = Number(result.percentage) || 0;
     const rank =
       classResults.filter(
         (r) =>
-          r.percentage > result.percentage &&
+          (Number(r.percentage) || 0) > resultPercentage &&
           r.studentId.toString() !== req.user._id.toString()
       ).length + 1;
 

@@ -8,6 +8,14 @@ import { ToastService } from '../../shared/toast.service';
 import { Subscription } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
+type StudentOption = {
+  _id: string;
+  fullName: string;
+  email: string;
+  idNumber?: string;
+  department?: string;
+};
+
 @Component({
   selector: 'app-faculty-dashboard',
   imports: [ReactiveFormsModule, FormsModule, UpperCasePipe, CommonModule, RouterLink],
@@ -22,6 +30,7 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
 
   stats = { papersUploaded: 0, aiEvaluated: 0, manuallyEvaluated: 0, pendingEvaluation: 0 };
   recentExams: any[] = [];
+  availableStudents: StudentOption[] = [];
 
   selectedStudentPapers: Array<{ file: File; email: string }> = [];
   selectedModelAnswer: File | null = null;
@@ -134,6 +143,7 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.initForm();
     this.loadDashboard();
+    this.loadAvailableStudents();
   }
 
   private initForm() {
@@ -159,6 +169,17 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
       },
       error: (err: any) => {
         this.toastService.show('error', 'Failed to load dashboard data.');
+      }
+    });
+  }
+
+  loadAvailableStudents() {
+    this.facultyService.getAvailableStudents().subscribe({
+      next: (res) => {
+        this.availableStudents = res.data || [];
+      },
+      error: () => {
+        this.toastService.show('error', 'Failed to load available students.');
       }
     });
   }
@@ -201,11 +222,27 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
     input.value = '';
   }
 
-  updateStudentPaperEmail(index: number, email: string) {
+  updateStudentPaperStudent(index: number, email: string) {
     if (index < 0 || index >= this.selectedStudentPapers.length) {
       return;
     }
     this.selectedStudentPapers[index].email = email;
+  }
+
+  getStudentsForCurrentExam(): StudentOption[] {
+    const selectedDepartment = this.uploadForm?.get('department')?.value;
+    if (!selectedDepartment) {
+      return [];
+    }
+    return this.availableStudents.filter((student) => student.department === selectedDepartment);
+  }
+
+  get hasSelectedDepartment(): boolean {
+    return Boolean(this.uploadForm?.get('department')?.value);
+  }
+
+  isStudentAlreadySelected(email: string, currentIndex: number): boolean {
+    return this.selectedStudentPapers.some((paper, index) => index !== currentIndex && paper.email === email);
   }
 
   removeStudentPaper(index: number) {
@@ -237,16 +274,22 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
       return;
     }
     if (this.selectedStudentPapers.length === 0) {
-      this.toastService.show('error', 'Please upload at least one student answer sheet image.');
+      this.toastService.show('error', 'Please upload at least one student answer sheet file.');
       return;
     }
     if (this.selectedStudentPapers.some((paper) => !paper.email?.trim())) {
-      this.toastService.show('error', 'Please enter the student email for each uploaded sheet.');
+      this.toastService.show('error', 'Please select a student for each uploaded answer sheet.');
       return;
     }
-    const invalidEmail = this.selectedStudentPapers.some((paper) => !/^\S+@\S+\.\S+$/.test(paper.email.trim()));
-    if (invalidEmail) {
-      this.toastService.show('error', 'Please enter a valid email address for each student.');
+    const selectedEmails = this.selectedStudentPapers.map((paper) => paper.email.trim());
+    if (new Set(selectedEmails).size !== selectedEmails.length) {
+      this.toastService.show('error', 'Each student can be selected only once per exam.');
+      return;
+    }
+    const availableStudentEmails = new Set(this.getStudentsForCurrentExam().map((student) => student.email));
+    const invalidStudent = selectedEmails.some((email) => !availableStudentEmails.has(email));
+    if (invalidStudent) {
+      this.toastService.show('error', 'Please select only active registered students from the selected department.');
       return;
     }
     if (!this.selectedModelAnswer) {
@@ -351,17 +394,19 @@ export class FacultyDashboardComponent implements OnInit, OnDestroy {
           const enableCrossCheck = this.uploadForm.get('enableCrossCheck')?.value;
           
           if (enableCrossCheck && evalRes.data?.results) {
-            const backendBase = environment.backendUrl;
             this.crossCheckPapers = evalRes.data.results.map((result: any) => {
               const extractedAnswer = result.extractedAnswer || {};
               const aiDetails = result.aiEvaluationDetails || {};
               const filePath = result.studentAnswerSheet?.filePath || '';
-              const studentImageUrl = filePath ? `${backendBase}${filePath}` : '';
+              const studentAnswerSheetUrl = this.toFileUrl(filePath);
+              const studentAnswerSheetName = result.studentAnswerSheet?.originalName || filePath;
+              const isStudentAnswerSheetPdf = String(studentAnswerSheetName).toLowerCase().includes('.pdf');
 
               return {
                 resultId: result._id,
                 studentEmail: result.studentAnswerSheet?.email || '',
-                studentImageUrl,
+                studentAnswerSheetUrl,
+                isStudentAnswerSheetPdf,
                 usedMockEvaluation: result.usedMockEvaluation === true,
                 lowConfidence: aiDetails.low_confidence === true,
                 confidenceNote: aiDetails.confidence_note || null,
@@ -673,24 +718,51 @@ if (feedbackContent && evaluation.feedback) {
       }).join('');
     }
 
-    // Phase 1.4: Show actual student answer sheet image
+    // Phase 1.4: Show actual student answer sheet file
     const studentImagePanel = document.getElementById('studentImagePanel');
     if (studentImagePanel) {
-      const imageUrl = paper.studentImageUrl || '';
+      const answerSheetUrl = paper.studentAnswerSheetUrl || paper.studentImageUrl || '';
+      const safeAnswerSheetUrl = this.escapeHtml(answerSheetUrl);
       const studentEmail = paper.studentEmail ? `<span style="font-size:0.85rem;color:#6c757d;">${this.escapeHtml(paper.studentEmail)}</span>` : '';
 
-      if (imageUrl) {
-        studentImagePanel.innerHTML = `
-          <div style="margin-bottom:8px;">${studentEmail}</div>
-          <img src="${imageUrl}" alt="Student answer sheet"
-               style="width:100%; max-height:500px; object-fit:contain; border:1px solid #dee2e6; border-radius:8px; cursor:zoom-in;"
-               onclick="this.style.maxHeight = this.style.maxHeight === 'none' ? '500px' : 'none'"
-               onerror="this.parentElement.innerHTML='<p style=\\'color:#dc3545;padding:12px;\\'>Could not load image. File may have been moved.</p>'">
-        `;
+      if (answerSheetUrl) {
+        if (paper.isStudentAnswerSheetPdf || answerSheetUrl.toLowerCase().includes('.pdf')) {
+          studentImagePanel.innerHTML = `
+            <div style="margin-bottom:8px;">${studentEmail}</div>
+            <iframe src="${safeAnswerSheetUrl}" title="Student answer sheet PDF"
+                    style="width:100%; min-height:500px; border:1px solid #dee2e6; border-radius:8px; background:#f8f9fa;"></iframe>
+            <a href="${safeAnswerSheetUrl}" target="_blank" rel="noopener"
+               style="display:inline-block;margin-top:8px;color:var(--primary);font-size:0.85rem;">Open PDF</a>
+          `;
+        } else {
+          studentImagePanel.innerHTML = `
+            <div style="margin-bottom:8px;">${studentEmail}</div>
+            <img src="${safeAnswerSheetUrl}" alt="Student answer sheet"
+                 style="width:100%; max-height:500px; object-fit:contain; border:1px solid #dee2e6; border-radius:8px; cursor:zoom-in;"
+                 onclick="this.style.maxHeight = this.style.maxHeight === 'none' ? '500px' : 'none'"
+                 onerror="this.parentElement.innerHTML='<p style=\\'color:#dc3545;padding:12px;\\'>Could not load image. File may have been moved.</p>'">
+          `;
+        }
       } else {
-        studentImagePanel.innerHTML = `<p style="color:#6c757d;padding:12px;">No image available for this student.</p>`;
+        studentImagePanel.innerHTML = `<p style="color:#6c757d;padding:12px;">No answer sheet available for this student.</p>`;
       }
     }
+  }
+
+  private toFileUrl(filePath: string): string {
+    const normalizedPath = String(filePath || '').replace(/\\/g, '/').trim();
+
+    if (!normalizedPath) {
+      return '';
+    }
+
+    if (/^(https?:)?\/\//i.test(normalizedPath)) {
+      return normalizedPath;
+    }
+
+    const backendBase = (environment.backendUrl || '').replace(/\/$/, '');
+    const pathWithSlash = normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`;
+    return `${backendBase}${pathWithSlash}`;
   }
 
   private escapeHtml(text: string): string {

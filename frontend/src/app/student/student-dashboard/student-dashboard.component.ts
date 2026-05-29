@@ -1,10 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { UpperCasePipe, CommonModule, DecimalPipe } from '@angular/common';
 import { AuthService } from '../../shared/services/auth.service';
 import { StudentService } from '../../shared/services/student.service';
 import { ToastService } from '../../shared/toast.service';
 import { environment } from '../../../environments/environment';
+import { Subscription, finalize, timeout } from 'rxjs';
+import { DomSanitizer, SafeResourceUrl, SafeUrl } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-student-dashboard',
@@ -12,13 +14,18 @@ import { environment } from '../../../environments/environment';
   templateUrl: './student-dashboard.component.html',
   styleUrl: './student-dashboard.component.css',
 })
-export class StudentDashboardComponent implements OnInit {
+export class StudentDashboardComponent implements OnInit, OnDestroy {
   stats = { totalEvaluated: 0, averageScore: 0, topPerformances: 0, pendingResults: 0 };
   results: any[] = [];
 
   showDetailModal = false;
   selectedResult: any = null;
   loadingDetail = false;
+  isLoadingDashboard = false;
+  private dashboardRefreshInterval?: ReturnType<typeof setInterval>;
+  private dashboardSub?: Subscription;
+  private detailSub?: Subscription;
+  private readonly handleWindowFocus = () => this.loadDashboard(false);
 
   get userInitial() { return this.auth.getUser()?.fullName?.charAt(0)?.toUpperCase() || 'S'; }
   get userName() { return this.auth.getUser()?.fullName || 'Student'; }
@@ -27,39 +34,74 @@ export class StudentDashboardComponent implements OnInit {
     private auth: AuthService,
     private studentService: StudentService,
     private router: Router,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private sanitizer: DomSanitizer,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
     this.loadDashboard();
+    window.addEventListener('focus', this.handleWindowFocus);
+    this.dashboardRefreshInterval = setInterval(() => this.loadDashboard(false), 15000);
   }
 
-  loadDashboard() {
-    this.studentService.getDashboard().subscribe({
+  ngOnDestroy() {
+    this.dashboardSub?.unsubscribe();
+    this.detailSub?.unsubscribe();
+    window.removeEventListener('focus', this.handleWindowFocus);
+    if (this.dashboardRefreshInterval) {
+      clearInterval(this.dashboardRefreshInterval);
+    }
+  }
+
+  loadDashboard(showError = true) {
+    if (this.isLoadingDashboard) {
+      return;
+    }
+
+    this.isLoadingDashboard = true;
+    this.dashboardSub = this.studentService.getDashboard()
+      .pipe(finalize(() => {
+        this.isLoadingDashboard = false;
+        this.cdr.markForCheck();
+      }))
+      .subscribe({
       next: (res) => {
-        this.stats = res.data.stats;
-        this.results = res.data.recentResults;
+        this.stats = res.data?.stats || this.stats;
+        this.results = res.data?.recentResults || [];
+        this.cdr.markForCheck();
       },
       error: () => {
-        this.toastService.show('error', 'Failed to load dashboard. Please refresh.');
+        if (showError) {
+          this.toastService.show('error', 'Failed to load dashboard. Please refresh.');
+        }
+        this.cdr.markForCheck();
       }
     });
   }
 
-  viewDetail(resultId: string) {
+  viewDetail(result: any) {
     this.loadingDetail = true;
     this.showDetailModal = true;
-    this.selectedResult = null;
+    this.selectedResult = result;
 
-    this.studentService.getResultById(resultId).subscribe({
+    this.detailSub?.unsubscribe();
+    this.detailSub = this.studentService.getResultById(result._id)
+      .pipe(
+        timeout(15000),
+        finalize(() => {
+          this.loadingDetail = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
       next: (res) => {
-        this.selectedResult = res.data;
-        this.loadingDetail = false;
+        this.selectedResult = res.data || result;
+        this.cdr.markForCheck();
       },
       error: () => {
-        this.loadingDetail = false;
         this.toastService.show('error', 'Could not load result details.');
-        this.showDetailModal = false;
+        this.cdr.markForCheck();
       }
     });
   }
@@ -93,10 +135,42 @@ export class StudentDashboardComponent implements OnInit {
     return map[g] || '#6c757d';
   }
 
-  get studentImageUrl(): string {
+  get studentAnswerSheetUrl(): string {
     const filePath = this.selectedResult?.studentAnswerSheet?.filePath || '';
     if (!filePath) return '';
-    return `${environment.backendUrl}${filePath}`;
+    return this.toFileUrl(filePath);
+  }
+
+  get isStudentAnswerSheetPdf(): boolean {
+    const sheet = this.selectedResult?.studentAnswerSheet;
+    const fileName = `${sheet?.originalName || ''} ${sheet?.filePath || ''}`.toLowerCase();
+    return fileName.includes('.pdf');
+  }
+
+  get studentAnswerSheetPdfUrl(): SafeResourceUrl | null {
+    if (!this.studentAnswerSheetUrl) return null;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(this.studentAnswerSheetUrl);
+  }
+
+  get studentAnswerSheetOpenUrl(): SafeUrl | null {
+    if (!this.studentAnswerSheetUrl) return null;
+    return this.sanitizer.bypassSecurityTrustUrl(this.studentAnswerSheetUrl);
+  }
+
+  private toFileUrl(filePath: string): string {
+    const normalizedPath = String(filePath).replace(/\\/g, '/').trim();
+
+    if (!normalizedPath) {
+      return '';
+    }
+
+    if (/^(https?:)?\/\//i.test(normalizedPath)) {
+      return normalizedPath;
+    }
+
+    const backendBase = (environment.backendUrl || '').replace(/\/$/, '');
+    const pathWithSlash = normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`;
+    return `${backendBase}${pathWithSlash}`;
   }
 
   get lowConfidence(): boolean {

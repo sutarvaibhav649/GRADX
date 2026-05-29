@@ -37,6 +37,24 @@ const getDashboard = async (req, res) => {
   }
 };
 
+// GET /api/faculty/students
+const getAvailableStudents = async (req, res) => {
+  try {
+    const { department } = req.query;
+    const filter = { role: 'student', isActive: true };
+
+    if (department) filter.department = department;
+
+    const students = await User.find(filter)
+      .select('fullName email idNumber department')
+      .sort({ fullName: 1, email: 1 });
+
+    res.status(200).json({ success: true, data: students });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // POST /api/faculty/exams
 const createExam = async (req, res) => {
   try {
@@ -96,6 +114,29 @@ const createExam = async (req, res) => {
 
     if (studentPapers.some((paper) => !paper.email)) {
       return res.status(400).json({ success: false, message: 'Every student answer sheet requires a corresponding student email' });
+    }
+
+    const normalizedStudentEmails = studentPapers.map((paper) => paper.email.toLowerCase());
+    const uniqueStudentEmails = new Set(normalizedStudentEmails);
+
+    if (uniqueStudentEmails.size !== normalizedStudentEmails.length) {
+      return res.status(400).json({ success: false, message: 'Each student can be selected only once per exam' });
+    }
+
+    const registeredStudents = await User.find({
+      role: 'student',
+      isActive: true,
+      department,
+      email: { $in: normalizedStudentEmails },
+    }).select('email');
+    const registeredEmailSet = new Set(registeredStudents.map((student) => student.email));
+    const invalidStudentEmails = normalizedStudentEmails.filter((email) => !registeredEmailSet.has(email));
+
+    if (invalidStudentEmails.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Every answer sheet must be assigned to an active registered student in the selected department',
+      });
     }
 
     const marks = parseInt(maxMarks);
@@ -277,4 +318,4 @@ const getExamResults = async (req, res) => {
   }
 };
 
-module.exports = { getDashboard, createExam, getMyExams, getExamById, updateExam, deleteExam, getExamResults };
+module.exports = { getDashboard, getAvailableStudents, createExam, getMyExams, getExamById, updateExam, deleteExam, getExamResults };

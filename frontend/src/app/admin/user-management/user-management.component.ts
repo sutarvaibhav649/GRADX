@@ -70,7 +70,7 @@ export class UserManagementComponent implements OnInit {
     private auth: AuthService,
     private toastService: ToastService,
     private router: Router
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.initializeForm();

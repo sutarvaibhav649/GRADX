@@ -297,12 +297,13 @@
     flex: 1 1 180px;
 }
 
-.paper-email {
+.paper-student {
     flex: 2 1 240px;
     padding: 0.5rem 0.6rem;
     border: 1px solid #ccc;
     border-radius: 6px;
     font-size: 0.92rem;
+    background: white;
 }
 
 .remove-paper-btn {
