@@ -13,6 +13,10 @@ export class FacultyService {
     return this.http.get<any>(`${this.api}/faculty/dashboard`);
   }
 
+  getAvailableStudents(params: any = {}) {
+    return this.http.get<any>(`${this.api}/faculty/students`, { params });
+  }
+
 
   createExam(formData: FormData) {
     return this.http.post<any>(`${this.api}/faculty/exams`, formData);

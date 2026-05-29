@@ -20,6 +20,10 @@ export class AdminService {
     return this.http.get<any>(`${this.api}/admin/users/${id}`);
   }
 
+  createUser(data: any) {
+    return this.http.post<any>(`${this.api}/admin/users`, data);
+  }
+
   updateUser(id: string, data: any) {
     return this.http.put<any>(`${this.api}/admin/users/${id}`, data);
   }

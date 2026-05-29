@@ -11,6 +11,9 @@
                     <div class="user-name">{{ userName }}</div>
                     <div class="user-role">Faculty</div>
                 </div>
+                <a class="btn btn-outline btn-sm" routerLink="/faculty/profile">
+                    <i class="fas fa-user-cog"></i> Profile
+                </a>
                 <button class="btn btn-outline btn-sm" (click)="logout()">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
@@ -255,17 +258,29 @@
                                     <span class="file-name">
                                         <i [class]="paper.file.type === 'application/pdf' ? 'fas fa-file-pdf' : 'fas fa-file-image'"></i> {{ paper.file.name }}
                                     </span>
-                                    <input type="email" class="paper-email" placeholder="Student email" 
-                                           [value]="paper.email" 
-                                           (input)="updateStudentPaperEmail($index, $any($event.target).value)"
-                                           required>
+                                    <select class="paper-student"
+                                            [value]="paper.email"
+                                            (change)="updateStudentPaperStudent($index, $any($event.target).value)"
+                                            required>
+                                        <option value="">
+                                            {{ hasSelectedDepartment ? 'Select student' : 'Select department first' }}
+                                        </option>
+                                        @for (student of getStudentsForCurrentExam(); track student._id) {
+                                            <option [value]="student.email"
+                                                    [disabled]="isStudentAlreadySelected(student.email, $index)">
+                                                {{ student.fullName }} ({{ student.idNumber || student.email }})
+                                            </option>
+                                        }
+                                    </select>
                                     <button type="button" class="remove-paper-btn" (click)="removeStudentPaper($index)">
                                         <i class="fas fa-times"></i>
                                     </button>
                                 </div>
                             }
                         </div>
-                        <small class="upload-hint">Enter the student email for each uploaded answer sheet.</small>
+                        <small class="upload-hint">
+                            Select one active registered student from the selected department for each answer sheet.
+                        </small>
                     </div>
 
                     <!-- Model Answer Upload -->
@@ -508,7 +523,7 @@
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;">
                             <!-- Actual paper image -->
                             <div>
-                                <h5 style="margin-bottom:10px; color:var(--primary);"><i class="fas fa-image"></i> Original Paper</h5>
+                                <h5 style="margin-bottom:10px; color:var(--primary);"><i class="fas fa-file-alt"></i> Original Paper</h5>
                                 <div id="studentImagePanel" style="background:#f8f9fa; border-radius:8px; padding:8px; min-height:80px;">
                                     <div class="loading-preview">
                                         <i class="fas fa-spinner fa-pulse"></i>

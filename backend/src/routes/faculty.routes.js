@@ -1,6 +1,7 @@
 const express = require('express');
 const {
   getDashboard,
+  getAvailableStudents,
   createExam,
   getMyExams,
   getExamById,
@@ -17,6 +18,7 @@ const router = express.Router();
 router.use(protect, authorize('faculty'));
 
 router.get('/dashboard', getDashboard);
+router.get('/students', getAvailableStudents);
 router.post(
   '/exams',
   upload.fields([

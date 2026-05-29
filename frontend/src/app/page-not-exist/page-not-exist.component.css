@@ -1,0 +1,57 @@
+.page-not-found {
+  min-height: calc(100vh - 70px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30px 16px;
+  background: radial-gradient(circle at top, rgba(255, 255, 255, 0.96), rgba(245, 248, 255, 0.98));
+}
+
+.content-card {
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+  padding: 40px 30px;
+  border-radius: 24px;
+  background: white;
+  box-shadow: 0 22px 60px rgba(16, 32, 70, 0.12);
+  border: 1px solid rgba(16, 32, 70, 0.08);
+}
+
+.status-code {
+  font-size: 5rem;
+  font-weight: 800;
+  color: #2f3e72;
+  margin-bottom: 18px;
+}
+
+h1 {
+  font-size: 2rem;
+  margin: 0 0 16px;
+  color: #222f55;
+}
+
+p {
+  margin: 0 0 28px;
+  line-height: 1.7;
+  color: #4a5578;
+  font-size: 1rem;
+}
+
+.home-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 26px;
+  border-radius: 999px;
+  background: #3f51b5;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.home-button:hover {
+  background: #3244a8;
+  transform: translateY(-1px);
+}

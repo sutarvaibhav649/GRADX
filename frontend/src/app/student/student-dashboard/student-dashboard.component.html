@@ -11,6 +11,9 @@
                     <div class="user-name">{{ userName }}</div>
                     <div class="user-role">Student</div>
                 </div>
+                <a class="btn btn-outline btn-sm" routerLink="/student/profile">
+                    <i class="fas fa-user-cog"></i> Profile
+                </a>
                 <button class="btn btn-outline btn-sm" (click)="logout()">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
@@ -75,7 +78,7 @@
                                     [style.color]="result.evaluationStatus === 'finalized' ? '#155724' : '#856404'">
                                     {{ result.evaluationStatus }}
                                 </span>
-                                <button class="btn btn-outline btn-sm" (click)="viewDetail(result._id)">
+                                <button class="btn btn-outline btn-sm" (click)="viewDetail(result)">
                                     <i class="fas fa-eye"></i> Details
                                 </button>
                             </div>
@@ -99,14 +102,21 @@
         </div>
 
         <div class="modal-body">
-            @if (loadingDetail) {
+            @if (loadingDetail && !selectedResult) {
                 <div style="text-align:center;padding:3rem;">
                     <i class="fas fa-spinner fa-spin fa-2x" style="color:#4e73df;"></i>
                     <p style="margin-top:1rem;color:#6c757d;">Loading result...</p>
                 </div>
             }
 
-            @if (!loadingDetail && selectedResult) {
+            @if (selectedResult) {
+                @if (loadingDetail) {
+                    <div class="detail-loading-bar">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        Updating result details...
+                    </div>
+                }
+
                 <!-- Low OCR confidence banner -->
                 @if (lowConfidence) {
                     <div class="alert alert-warning">
@@ -202,13 +212,28 @@
                     </div>
                 }
 
-                <!-- Answer sheet image -->
-                @if (studentImageUrl) {
+                <!-- Answer sheet preview -->
+                @if (studentAnswerSheetUrl) {
                     <div class="section-card">
-                        <h5><i class="fas fa-image"></i> Your Answer Sheet</h5>
-                        <img [src]="studentImageUrl" alt="Your answer sheet"
-                             style="width:100%;max-height:400px;object-fit:contain;border:1px solid #dee2e6;border-radius:8px;cursor:zoom-in;"
-                             (click)="$any($event.target).style.maxHeight = $any($event.target).style.maxHeight === 'none' ? '400px' : 'none'">
+                        <h5>
+                            <i [class]="isStudentAnswerSheetPdf ? 'fas fa-file-pdf' : 'fas fa-image'"></i>
+                            Your Answer Sheet
+                        </h5>
+                        @if (isStudentAnswerSheetPdf) {
+                            <iframe class="answer-sheet-pdf"
+                                    [src]="studentAnswerSheetPdfUrl"
+                                    title="Your answer sheet PDF"></iframe>
+                            <a class="btn btn-outline btn-sm answer-sheet-open"
+                               [href]="studentAnswerSheetOpenUrl"
+                               target="_blank"
+                               rel="noopener">
+                                <i class="fas fa-external-link-alt"></i> Open PDF
+                            </a>
+                        } @else {
+                            <img [src]="studentAnswerSheetUrl" alt="Your answer sheet"
+                                 class="answer-sheet-image"
+                                 (click)="$any($event.target).style.maxHeight = $any($event.target).style.maxHeight === 'none' ? '400px' : 'none'">
+                        }
                     </div>
                 }
             }

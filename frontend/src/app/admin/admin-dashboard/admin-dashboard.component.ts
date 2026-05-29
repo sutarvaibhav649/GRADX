@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { UpperCasePipe } from '@angular/common';
 import { AuthService } from '../../shared/services/auth.service';
 import { AdminService } from '../../shared/services/admin.service';
@@ -7,7 +7,7 @@ import { ToastService } from '../../shared/toast.service';
 
 @Component({
   selector: 'app-admin-dashboard',
-  imports: [UpperCasePipe],
+  imports: [UpperCasePipe, RouterLink],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.css',
 })
